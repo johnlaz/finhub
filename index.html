@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Suite - Financial Hub</title>
+    <link rel="manifest" href="manifest.json">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @media print {
+            aside, nav, button, #nav-sidebar { display: none !important; }
+            main { padding: 0 !important; overflow: visible !important; }
+            body { background-color: white !important; }
+            .print-hide { display: none !important; }
+            #print-area { border: none !important; box-shadow: none !important; padding: 0 !important; width: 100% !important; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans text-gray-800">
+
+    <div class="flex h-screen overflow-hidden">
+        <aside class="w-64 bg-slate-900 text-white flex flex-col" id="nav-sidebar">
+            <div class="p-6">
+                <h1 class="text-2xl font-bold tracking-wider">NEXUS<span class="text-blue-400">FIN</span></h1>
+                <p class="text-xs text-slate-400 mt-1">Local PWA Environment</p>
+            </div>
+            <nav class="flex-1 px-4 space-y-2">
+                <button onclick="switchTab('dashboard')" class="w-full flex items-center p-3 rounded-lg hover:bg-slate-800 transition-colors bg-slate-800" id="nav-dashboard">Executive Dashboard</button>
+                <button onclick="switchTab('ledgers')" class="w-full flex items-center p-3 rounded-lg hover:bg-slate-800 transition-colors" id="nav-ledgers">Ledger & Visuals</button>
+                <button onclick="switchTab('reports')" class="w-full flex items-center p-3 rounded-lg hover:bg-slate-800 transition-colors" id="nav-reports">Report Generator</button>
+                <button onclick="switchTab('data')" class="w-full flex items-center p-3 rounded-lg hover:bg-slate-800 transition-colors" id="nav-data">Data Hub</button>
+            </nav>
+        </aside>
+
+        <main class="flex-1 overflow-y-auto p-8 relative" id="main-content">
+            
+            <div id="view-dashboard" class="view-section">
+                <h2 class="text-3xl font-bold mb-6 text-gray-800">Executive Dashboard</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 border-t-4 border-t-green-500">
+                        <p class="text-sm text-gray-500 font-medium uppercase tracking-wide">Accounts Receivable</p>
+                        <p class="text-3xl font-bold text-gray-800 mt-2 truncate" id="dash-ar">$0.00</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 border-t-4 border-t-red-500">
+                        <p class="text-sm text-gray-500 font-medium uppercase tracking-wide">Accounts Payable</p>
+                        <p class="text-3xl font-bold text-gray-800 mt-2 truncate" id="dash-ap">$0.00</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 border-t-4 border-t-blue-500">
+                        <p class="text-sm text-gray-500 font-medium uppercase tracking-wide">Net Income</p>
+                        <p class="text-3xl font-bold text-gray-800 mt-2 truncate" id="dash-net">$0.00</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 border-t-4 border-t-purple-500">
+                        <p class="text-sm text-gray-500 font-medium uppercase tracking-wide">Total Equity</p>
+                        <p class="text-3xl font-bold text-gray-800 mt-2 truncate" id="dash-equity">$0.00</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-ledgers" class="view-section hidden">
+                <h2 class="text-3xl font-bold mb-6 text-gray-800">Ledger Explorer</h2>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                    <div class="lg:col-span-3 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <h3 class="text-lg font-bold mb-4 text-gray-700">Outstanding Balances</h3>
+                        <div class="overflow-y-auto max-h-[400px] pr-2">
+                            <table class="w-full text-left table-fixed" id="ledger-table">
+                                <thead class="sticky top-0 bg-white z-10 shadow-sm">
+                                    <tr class="border-b-2 border-gray-100 text-gray-500">
+                                        <th class="pb-3 pt-2 font-semibold w-2/3">Entity / Vendor</th>
+                                        <th class="pb-3 pt-2 text-right font-semibold w-1/3">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ledger-body">
+                                    <tr><td colspan="2" class="py-8 text-center text-gray-400">No data loaded. Go to Data Hub to upload CSVs.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col">
+                        <h3 class="text-lg font-bold mb-2 text-gray-700 w-full text-left">Top Balances</h3>
+                        <p class="text-sm text-gray-400 mb-6 w-full text-left">Top 5 pending items.</p>
+                        <div class="w-full relative flex-1" style="min-height: 250px;">
+                            <canvas id="ledgerChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-reports" class="view-section hidden">
+                <div class="flex justify-between items-center mb-6 print-hide">
+                    <h2 class="text-3xl font-bold text-gray-800">Report Generator</h2>
+                    <button onclick="window.print()" class="bg-slate-800 hover:bg-slate-900 text-white px-5 py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                        Print / Save PDF
+                    </button>
+                </div>
+                
+                <div class="bg-white p-12 rounded-xl shadow-sm border border-gray-200" id="print-area">
+                    <div class="text-center border-b-2 border-gray-800 pb-6 mb-8">
+                        <h1 class="text-4xl font-extrabold uppercase tracking-widest text-gray-900">Financial Summary</h1>
+                        <p class="text-gray-500 mt-2 font-medium" id="report-date-display">Generated on: </p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-12">
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-800 border-b border-gray-300 pb-2 mb-4 uppercase tracking-wide">Income Statement</h3>
+                            <div class="space-y-3 text-lg">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Total Income</span>
+                                    <span class="font-medium text-gray-900" id="rep-income">$0.00</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Total Expenses</span>
+                                    <span class="font-medium text-gray-900" id="rep-expense">$0.00</span>
+                                </div>
+                                <div class="flex justify-between pt-3 border-t border-gray-200 font-bold">
+                                    <span class="text-gray-800">Net Ordinary Income</span>
+                                    <span class="text-blue-600" id="rep-net">$0.00</span>
+                                </div>
+                            </div>
+
+                            <h3 class="text-xl font-bold text-gray-800 border-b border-gray-300 pb-2 mb-4 mt-10 uppercase tracking-wide">Liquidity</h3>
+                            <div class="space-y-3 text-lg">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Accounts Receivable</span>
+                                    <span class="font-medium text-green-600" id="rep-ar">$0.00</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Accounts Payable</span>
+                                    <span class="font-medium text-red-600" id="rep-ap">$0.00</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-800 border-b border-gray-300 pb-2 mb-4 uppercase tracking-wide">Balance Sheet</h3>
+                            <div class="space-y-3 text-lg">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Total Assets</span>
+                                    <span class="font-medium text-gray-900" id="rep-assets">$0.00</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Total Liabilities</span>
+                                    <span class="font-medium text-gray-900" id="rep-liab">$0.00</span>
+                                </div>
+                                <div class="flex justify-between pt-3 border-t border-gray-200 font-bold">
+                                    <span class="text-gray-800">Total Equity</span>
+                                    <span class="text-purple-600" id="rep-equity">$0.00</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-data" class="view-section hidden">
+                <h2 class="text-3xl font-bold mb-6 text-gray-800">Data Hub</h2>
+                <div class="bg-white p-8 rounded-xl shadow-sm border border-gray-200 max-w-3xl">
+                    <h3 class="text-xl font-semibold mb-2 text-gray-800">Local Data Ingestion</h3>
+                    <p class="text-gray-500 mb-8 leading-relaxed">Select your QuickBooks CSV exports. This process utilizes the browser's local memory.</p>
+                    
+                    <div class="border-2 border-dashed border-gray-300 bg-gray-50 rounded-xl p-12 text-center hover:border-blue-500 hover:bg-blue-50 transition-all cursor-pointer group" onclick="document.getElementById('csv-upload').click()">
+                        <div class="mx-auto h-12 w-12 text-gray-400 group-hover:text-blue-500 mb-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                        </div>
+                        <p class="text-gray-700 font-medium text-lg">Click to select files or drag and drop</p>
+                        <p class="text-sm text-gray-500 mt-2">Supports: AR.csv, AP.csv, PL.csv, BS.csv</p>
+                        <input type="file" id="csv-upload" class="hidden" accept=".csv" multiple onchange="handleFiles(this.files)">
+                    </div>
+                    <div id="upload-status" class="mt-6 text-center font-medium text-green-600 hidden bg-green-50 py-3 rounded-lg border border-green-100">Files processed successfully!</div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        const formatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+        let globalLedgerData = [];
+        let chartInstance = null;
+        
+        let reportData = {
+            ar: 0, ap: 0, netIncome: 0, equity: 0,
+            income: 0, expense: 0, assets: 0, liabilities: 0
+        };
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`view-${tabId}`).classList.remove('hidden');
+            
+            document.querySelectorAll('nav button').forEach(btn => btn.classList.remove('bg-slate-800'));
+            document.getElementById(`nav-${tabId}`).classList.add('bg-slate-800');
+
+            if(tabId === 'reports') {
+                const dateOpts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                document.getElementById('report-date-display').innerText = 'Generated on: ' + new Date().toLocaleDateString('en-US', dateOpts);
+            }
+        }
+
+        function handleFiles(files) {
+            if(files.length > 0) {
+                document.getElementById('upload-status').classList.remove('hidden');
+                document.getElementById('upload-status').innerText = `Processing ${files.length} file(s)...`;
+                
+                globalLedgerData = [];
+                Object.keys(reportData).forEach(k => reportData[k] = 0);
+
+                Array.from(files).forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        Papa.parse(e.target.result, {
+                            skipEmptyLines: true,
+                            complete: function(results) {
+                                processData(results.data, file.name.toUpperCase());
+                            }
+                        });
+                    };
+                    reader.readAsText(file);
+                });
+
+                setTimeout(() => {
+                    document.getElementById('upload-status').innerText = "Data ingested successfully! See Dashboard & Reports.";
+                    updateUI();
+                }, 800);
+            }
+        }
+
+        function processData(rows, filename) {
+            const parseNum = (val) => parseFloat((val || '0').toString().replace(/[\$,]/g, '')) || 0;
+            const getLastNumber = (row) => {
+                for(let i = row.length - 1; i >= 0; i--) {
+                    const num = parseNum(row[i]);
+                    if (!isNaN(num) && row[i].toString().trim() !== '') return num;
+                }
+                return 0;
+            };
+
+            if (filename.includes('AR')) {
+                const totalRow = rows.find(r => r.includes('TOTAL') && !r.includes('Current'));
+                if (totalRow) reportData.ar = getLastNumber(totalRow);
+                
+                rows.forEach(r => {
+                    const name = r;
+                    if (name && name !== 'TOTAL' && name !== 'Current' && r.length > 2) {
+                        const amt = getLastNumber(r);
+                        if (amt !== 0) globalLedgerData.push({ type: 'AR', entity: name, amount: amt });
+                    }
+                });
+            } 
+            else if (filename.includes('AP')) {
+                const totalRow = rows.find(r => r.includes('TOTAL') && !r.includes('Current'));
+                if (totalRow) reportData.ap = getLastNumber(totalRow);
+                
+                rows.forEach(r => {
+                    const name = r;
+                    if (name && name !== 'TOTAL' && name !== 'Current' && r.length > 2) {
+                        const amt = getLastNumber(r);
+                        if (amt !== 0) globalLedgerData.push({ type: 'AP', entity: name, amount: amt });
+                    }
+                });
+            }
+            else if (filename.includes('PL')) {
+                const incRow = rows.find(r => r.some(c => c && c.toString().includes('Total Income')));
+                if (incRow) reportData.income = parseNum(incRow[incRow.length - 3] || getLastNumber(incRow));
+
+                const expRow = rows.find(r => r.some(c => c && c.toString().includes('Total Expense')));
+                if (expRow) reportData.expense = parseNum(expRow[expRow.length - 3] || getLastNumber(expRow));
+
+                const netRow = rows.find(r => r.some(c => c && c.toString().includes('Net Ordinary Income')));
+                if (netRow) reportData.netIncome = parseNum(netRow[netRow.length - 3] || getLastNumber(netRow));
+            }
+            else if (filename.includes('BS')) {
+                const assetRow = rows.find(r => r.some(c => c && c.toString().toUpperCase() === 'TOTAL ASSETS'));
+                if (assetRow) reportData.assets = parseNum(assetRow[assetRow.length - 3] || getLastNumber(assetRow));
+
+                const liabRow = rows.find(r => r.some(c => c && c.toString().includes('Total Liabilities')));
+                if (liabRow) reportData.liabilities = parseNum(liabRow[liabRow.length - 3] || getLastNumber(liabRow));
+
+                const eqRow = rows.find(r => r.some(c => c && c.toString().includes('Total Equity')));
+                if (eqRow) reportData.equity = parseNum(eqRow[eqRow.length - 3] || getLastNumber(eqRow));
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('dash-ar').innerText = formatter.format(reportData.ar);
+            document.getElementById('dash-ap').innerText = formatter.format(reportData.ap);
+            document.getElementById('dash-net').innerText = formatter.format(reportData.netIncome);
+            document.getElementById('dash-equity').innerText = formatter.format(reportData.equity);
+
+            document.getElementById('rep-income').innerText = formatter.format(reportData.income);
+            document.getElementById('rep-expense').innerText = formatter.format(reportData.expense);
+            document.getElementById('rep-net').innerText = formatter.format(reportData.netIncome);
+            document.getElementById('rep-ar').innerText = formatter.format(reportData.ar);
+            document.getElementById('rep-ap').innerText = formatter.format(reportData.ap);
+            document.getElementById('rep-assets').innerText = formatter.format(reportData.assets);
+            document.getElementById('rep-liab').innerText = formatter.format(reportData.liabilities);
+            document.getElementById('rep-equity').innerText = formatter.format(reportData.equity);
+
+            renderLedgerAndChart();
+        }
+
+        function renderLedgerAndChart() {
+            const tbody = document.getElementById('ledger-body');
+            tbody.innerHTML = ''; 
+            
+            if (globalLedgerData.length === 0) return;
+
+            globalLedgerData.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+
+            // Cleanly formatted table with text truncation
+            globalLedgerData.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = "border-b border-gray-100 hover:bg-gray-50 transition-colors";
+                const isAP = item.type === 'AP';
+                const colorClass = isAP ? 'text-red-600' : 'text-green-600';
+                const tagClass = isAP ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700';
+                
+                tr.innerHTML = `
+                    <td class="py-3 font-medium text-gray-700 flex items-center gap-3 w-full">
+                        <span class="text-[10px] px-2 py-1 rounded font-bold uppercase tracking-wide shrink-0 ${tagClass}">${item.type}</span>
+                        <span class="truncate block max-w-[200px] sm:max-w-xs" title="${item.entity}">${item.entity}</span>
+                    </td>
+                    <td class="py-3 text-right font-semibold whitespace-nowrap ${colorClass}">${formatter.format(item.amount)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Reduced to top 5 items for a cleaner chart
+            const topItems = globalLedgerData.slice(0, 5);
+            // Further truncate labels for the chart specifically
+            const labels = topItems.map(i => i.entity.length > 18 ? i.entity.substring(0, 15) + '...' : i.entity);
+            const data = topItems.map(i => Math.abs(i.amount));
+            const bgColors = topItems.map(i => i.type === 'AP' ? 'rgba(239, 68, 68, 0.85)' : 'rgba(34, 197, 94, 0.85)');
+
+            if (chartInstance) chartInstance.destroy(); 
+            const ctx = document.getElementById('ledgerChart').getContext('2d');
+            
+            chartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: bgColors,
+                        borderWidth: 1,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: { left: 10, right: 10, top: 10, bottom: 10 }
+                    },
+                    plugins: {
+                        // Moved legend to the right so it doesn't squish vertically
+                        legend: { 
+                            position: 'right', 
+                            labels: { 
+                                boxWidth: 12,
+                                padding: 15,
+                                font: { size: 11 }
+                            } 
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ' ' + formatter.format(context.raw);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(() => {});
+            });
+        }
+    </script>
+</body>
+</html>
