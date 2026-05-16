@@ -3,385 +3,1547 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nexus Suite - Financial Hub</title>
-    <link rel="manifest" href="manifest.json">
+    <title>Financial Review Package</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
+        /* ── Screen styles ─────────────────────────────── */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { background: #f3f4f6; border: 1px solid #e5e7eb; padding: 8px; text-align: left; font-weight: 600; }
+        td { border: 1px solid #e5e7eb; padding: 8px; }
+        tr:hover { background: #f9fafb; }
+        .metric { background: #f9fafb; border: 1px solid #e5e7eb; padding: 12px; border-radius: 6px; transition: box-shadow 0.15s, border-color 0.15s; }
+        .metric-label { font-size: 12px; color: #6b7280; }
+        .metric-value { font-size: 20px; font-weight: bold; color: #111827; margin-top: 4px; }
+        .positive { color: #059669; }
+        .negative { color: #dc2626; }
+        .file-status-loaded { background: #dcfce7; color: #166534; }
+        .file-status-loading { background: #fef3c7; color: #92400e; }
+
+        /* ── Print styles ──────────────────────────────── */
         @media print {
-            aside, nav, button, #nav-sidebar { display: none !important; }
-            main { padding: 0 !important; overflow: visible !important; }
-            body { background-color: white !important; }
-            .print-hide { display: none !important; }
-            #print-area { border: none !important; box-shadow: none !important; padding: 0 !important; width: 100% !important; }
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+            aside, .print-hide, nav { display: none !important; }
+            body { background: #ffffff !important; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+            main { width: 100% !important; padding: 0 !important; overflow: visible !important; }
+            .flex.h-screen { display: block !important; height: auto !important; overflow: visible !important; }
+            main.flex-1 { overflow: visible !important; }
+
+            /* Cover page */
+            #print-cover {
+                display: flex !important;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                min-height: 100vh;
+                background: #ffffff !important;
+                page-break-after: always;
+                padding: 60px;
+                text-align: center;
+            }
+            #print-cover .cover-logo { width: 100px; height: 100px; border-radius: 50%; margin-bottom: 32px; }
+            #print-cover .cover-brand { color: #c9a227; font-size: 13px; font-weight: 700; letter-spacing: 6px; text-transform: uppercase; margin-bottom: 16px; }
+            #print-cover .cover-title { color: #0f0c1a; font-size: 36px; font-weight: 800; letter-spacing: 2px; margin-bottom: 8px; }
+            #print-cover .cover-company { color: #c9a227; font-size: 22px; font-weight: 600; margin-bottom: 40px; }
+            #print-cover .cover-divider { width: 80px; height: 2px; background: #c9a227; margin: 0 auto 40px; }
+            #print-cover .cover-meta { color: #6b7280; font-size: 13px; line-height: 2; }
+            #print-cover .cover-footer { position: absolute; bottom: 40px; color: #9ca3af; font-size: 11px; }
+
+            /* Section pages */
+            .print-section {
+                display: block !important;
+                page-break-before: always;
+                padding: 48px 56px;
+            }
+            .print-section-header {
+                display: flex !important;
+                align-items: center;
+                justify-content: space-between;
+                border-bottom: 3px solid #c9a227;
+                padding-bottom: 16px;
+                margin-bottom: 32px;
+            }
+            .print-section-header h2 {
+                font-size: 22px;
+                font-weight: 800;
+                color: #0f0c1a;
+                text-transform: uppercase;
+                letter-spacing: 2px;
+                margin: 0;
+            }
+            .print-section-header .section-logo { width: 36px; height: 36px; border-radius: 50%; }
+
+            /* Metrics grid in print */
+            .print-metrics-grid {
+                display: grid !important;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 12px;
+                margin-bottom: 40px;
+            }
+            .print-metric-card {
+                background: #0f0c1a !important;
+                border-radius: 8px;
+                padding: 16px;
+                text-align: center;
+            }
+            .print-metric-card .pm-label { color: #9ca3af; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+            .print-metric-card .pm-value { color: #c9a227; font-size: 18px; font-weight: 800; }
+
+            /* Tables in print */
+            .print-section table { font-size: 11px; margin-bottom: 24px; }
+            .print-section th { background: #0f0c1a !important; color: #c9a227 !important; border-color: #1f1a2e !important; padding: 8px 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+            .print-section td { border-color: #e5e7eb !important; padding: 7px 10px; color: #111827; }
+            .print-section tr:nth-child(even) td { background: #f9fafb !important; }
+            .print-section tr:last-child td { background: #0f0c1a !important; color: #c9a227 !important; font-weight: 700; }
+
+            /* Insight cards in print */
+            .print-insight { border-left: 4px solid #c9a227; padding: 14px 18px; margin-bottom: 12px; background: #f9fafb !important; border-radius: 0 6px 6px 0; }
+            .print-insight p { font-size: 12px; color: #1f2937; line-height: 1.7; margin: 0; }
+
+            /* Hide everything that isn't the print document */
+            .flex.h-screen, #print-modal, #license-modal { display: none !important; }
+            #print-document { display: block !important; }
+            #print-cover, .print-section { display: block !important; }
         }
     </style>
 </head>
-<body class="bg-gray-50 font-sans text-gray-800">
+<body class="bg-gray-50">
 
-    <div class="flex h-screen overflow-hidden">
-        <aside class="w-64 bg-slate-900 text-white flex flex-col" id="nav-sidebar">
-            <div class="p-6">
-                <h1 class="text-2xl font-bold tracking-wider">NEXUS<span class="text-blue-400">FIN</span></h1>
-                <p class="text-xs text-slate-400 mt-1">Local PWA Environment</p>
-            </div>
-            <nav class="flex-1 px-4 space-y-2">
-                <button onclick="switchTab('dashboard')" class="w-full flex items-center p-3 rounded-lg hover:bg-slate-800 transition-colors bg-slate-800" id="nav-dashboard">Executive Dashboard</button>
-                <button onclick="switchTab('ledgers')" class="w-full flex items-center p-3 rounded-lg hover:bg-slate-800 transition-colors" id="nav-ledgers">Ledger & Visuals</button>
-                <button onclick="switchTab('reports')" class="w-full flex items-center p-3 rounded-lg hover:bg-slate-800 transition-colors" id="nav-reports">Report Generator</button>
-                <button onclick="switchTab('data')" class="w-full flex items-center p-3 rounded-lg hover:bg-slate-800 transition-colors" id="nav-data">Data Hub</button>
-            </nav>
-        </aside>
-
-        <main class="flex-1 overflow-y-auto p-8 relative" id="main-content">
-            
-            <div id="view-dashboard" class="view-section">
-                <h2 class="text-3xl font-bold mb-6 text-gray-800">Executive Dashboard</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 border-t-4 border-t-green-500">
-                        <p class="text-sm text-gray-500 font-medium uppercase tracking-wide">Accounts Receivable</p>
-                        <p class="text-3xl font-bold text-gray-800 mt-2 truncate" id="dash-ar">$0.00</p>
-                    </div>
-                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 border-t-4 border-t-red-500">
-                        <p class="text-sm text-gray-500 font-medium uppercase tracking-wide">Accounts Payable</p>
-                        <p class="text-3xl font-bold text-gray-800 mt-2 truncate" id="dash-ap">$0.00</p>
-                    </div>
-                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 border-t-4 border-t-blue-500">
-                        <p class="text-sm text-gray-500 font-medium uppercase tracking-wide">Net Income</p>
-                        <p class="text-3xl font-bold text-gray-800 mt-2 truncate" id="dash-net">$0.00</p>
-                    </div>
-                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 border-t-4 border-t-purple-500">
-                        <p class="text-sm text-gray-500 font-medium uppercase tracking-wide">Total Equity</p>
-                        <p class="text-3xl font-bold text-gray-800 mt-2 truncate" id="dash-equity">$0.00</p>
-                    </div>
-                </div>
-            </div>
-
-            <div id="view-ledgers" class="view-section hidden">
-                <h2 class="text-3xl font-bold mb-6 text-gray-800">Ledger Explorer</h2>
-                
-                <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                    <div class="lg:col-span-3 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <h3 class="text-lg font-bold mb-4 text-gray-700">Outstanding Balances</h3>
-                        <div class="overflow-y-auto max-h-[400px] pr-2">
-                            <table class="w-full text-left table-fixed" id="ledger-table">
-                                <thead class="sticky top-0 bg-white z-10 shadow-sm">
-                                    <tr class="border-b-2 border-gray-100 text-gray-500">
-                                        <th class="pb-3 pt-2 font-semibold w-2/3">Entity / Vendor</th>
-                                        <th class="pb-3 pt-2 text-right font-semibold w-1/3">Amount</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="ledger-body">
-                                    <tr><td colspan="2" class="py-8 text-center text-gray-400">No data loaded. Go to Data Hub to upload CSVs.</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    
-                    <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col">
-                        <h3 class="text-lg font-bold mb-2 text-gray-700 w-full text-left">Top Balances</h3>
-                        <p class="text-sm text-gray-400 mb-6 w-full text-left">Top 5 pending items.</p>
-                        <div class="w-full relative flex-1" style="min-height: 250px;">
-                            <canvas id="ledgerChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="view-reports" class="view-section hidden">
-                <div class="flex justify-between items-center mb-6 print-hide">
-                    <h2 class="text-3xl font-bold text-gray-800">Report Generator</h2>
-                    <button onclick="window.print()" class="bg-slate-800 hover:bg-slate-900 text-white px-5 py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-                        Print / Save PDF
-                    </button>
-                </div>
-                
-                <div class="bg-white p-12 rounded-xl shadow-sm border border-gray-200" id="print-area">
-                    <div class="text-center border-b-2 border-gray-800 pb-6 mb-8">
-                        <h1 class="text-4xl font-extrabold uppercase tracking-widest text-gray-900">Financial Summary</h1>
-                        <p class="text-gray-500 mt-2 font-medium" id="report-date-display">Generated on: </p>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-12">
-                        <div>
-                            <h3 class="text-xl font-bold text-gray-800 border-b border-gray-300 pb-2 mb-4 uppercase tracking-wide">Income Statement</h3>
-                            <div class="space-y-3 text-lg">
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Total Income</span>
-                                    <span class="font-medium text-gray-900" id="rep-income">$0.00</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Total Expenses</span>
-                                    <span class="font-medium text-gray-900" id="rep-expense">$0.00</span>
-                                </div>
-                                <div class="flex justify-between pt-3 border-t border-gray-200 font-bold">
-                                    <span class="text-gray-800">Net Ordinary Income</span>
-                                    <span class="text-blue-600" id="rep-net">$0.00</span>
-                                </div>
-                            </div>
-
-                            <h3 class="text-xl font-bold text-gray-800 border-b border-gray-300 pb-2 mb-4 mt-10 uppercase tracking-wide">Liquidity</h3>
-                            <div class="space-y-3 text-lg">
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Accounts Receivable</span>
-                                    <span class="font-medium text-green-600" id="rep-ar">$0.00</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Accounts Payable</span>
-                                    <span class="font-medium text-red-600" id="rep-ap">$0.00</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div>
-                            <h3 class="text-xl font-bold text-gray-800 border-b border-gray-300 pb-2 mb-4 uppercase tracking-wide">Balance Sheet</h3>
-                            <div class="space-y-3 text-lg">
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Total Assets</span>
-                                    <span class="font-medium text-gray-900" id="rep-assets">$0.00</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Total Liabilities</span>
-                                    <span class="font-medium text-gray-900" id="rep-liab">$0.00</span>
-                                </div>
-                                <div class="flex justify-between pt-3 border-t border-gray-200 font-bold">
-                                    <span class="text-gray-800">Total Equity</span>
-                                    <span class="text-purple-600" id="rep-equity">$0.00</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="view-data" class="view-section hidden">
-                <h2 class="text-3xl font-bold mb-6 text-gray-800">Data Hub</h2>
-                <div class="bg-white p-8 rounded-xl shadow-sm border border-gray-200 max-w-3xl">
-                    <h3 class="text-xl font-semibold mb-2 text-gray-800">Local Data Ingestion</h3>
-                    <p class="text-gray-500 mb-8 leading-relaxed">Select your QuickBooks CSV exports. This process utilizes the browser's local memory.</p>
-                    
-                    <div class="border-2 border-dashed border-gray-300 bg-gray-50 rounded-xl p-12 text-center hover:border-blue-500 hover:bg-blue-50 transition-all cursor-pointer group" onclick="document.getElementById('csv-upload').click()">
-                        <div class="mx-auto h-12 w-12 text-gray-400 group-hover:text-blue-500 mb-4">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
-                        </div>
-                        <p class="text-gray-700 font-medium text-lg">Click to select files or drag and drop</p>
-                        <p class="text-sm text-gray-500 mt-2">Supports: AR.csv, AP.csv, PL.csv, BS.csv</p>
-                        <input type="file" id="csv-upload" class="hidden" accept=".csv" multiple onchange="handleFiles(this.files)">
-                    </div>
-                    <div id="upload-status" class="mt-6 text-center font-medium text-green-600 hidden bg-green-50 py-3 rounded-lg border border-green-100">Files processed successfully!</div>
-                </div>
-            </div>
-
-        </main>
-    </div>
-
-    <script>
-        const formatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
-        let globalLedgerData = [];
-        let chartInstance = null;
+<div class="flex h-screen overflow-hidden">
+    <aside class="w-72 bg-gray-900 text-white flex flex-col overflow-y-auto print-hide">
+        <div class="p-6 border-b border-gray-700 sticky top-0 bg-gray-900">
+            <h1 class="text-xl font-bold">Financial Review</h1>
+            <p class="text-xs text-gray-400 mt-1">Interactive package</p>
+        </div>
         
-        let reportData = {
-            ar: 0, ap: 0, netIncome: 0, equity: 0,
-            income: 0, expense: 0, assets: 0, liabilities: 0
+        <div class="flex-1 overflow-y-auto">
+            <div class="px-4 py-4 border-b border-gray-700">
+                <p class="text-xs font-semibold text-gray-400 uppercase mb-3">Navigation</p>
+                <nav class="space-y-1">
+                    <button onclick="switchTab('upload')" class="nav-btn w-full text-left px-3 py-2 rounded hover:bg-gray-800 text-sm bg-gray-800" data-tab="upload">📤 Load Data</button>
+                    <button onclick="switchTab('library')" class="nav-btn w-full text-left px-3 py-2 rounded hover:bg-gray-800 text-sm" data-tab="library">📚 Document Library</button>
+                    <button onclick="switchTab('dashboard')" class="nav-btn w-full text-left px-3 py-2 rounded hover:bg-gray-800 text-sm" data-tab="dashboard" disabled>📊 Dashboard</button>
+                    <button onclick="switchTab('arar')" class="nav-btn w-full text-left px-3 py-2 rounded hover:bg-gray-800 text-sm" data-tab="arar" disabled>💰 AR / AP</button>
+                    <button onclick="switchTab('pl')" class="nav-btn w-full text-left px-3 py-2 rounded hover:bg-gray-800 text-sm" data-tab="pl" disabled>📈 P&L</button>
+                    <button onclick="switchTab('bs')" class="nav-btn w-full text-left px-3 py-2 rounded hover:bg-gray-800 text-sm" data-tab="bs" disabled>⚖️ Balance Sheet</button>
+                    <button onclick="switchTab('tb')" class="nav-btn w-full text-left px-3 py-2 rounded hover:bg-gray-800 text-sm" data-tab="tb" disabled>📊 Trial Balance</button>
+                </nav>
+            </div>
+
+            <div id="library-list" class="px-4 py-4 border-b border-gray-700">
+                <p class="text-xs font-semibold text-gray-400 uppercase mb-3">Loaded Files</p>
+                <div id="file-list" class="space-y-2 text-xs">
+                    <div class="text-gray-500">No files loaded yet</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="border-t border-gray-700 p-4 space-y-3 sticky bottom-0 bg-gray-900">
+            <label class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer select-none">
+                <input type="checkbox" id="include-ai" checked class="rounded">
+                Include AI insights in bake
+            </label>
+            <button onclick="bakeHTML()" class="w-full bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm font-medium transition print-hide" id="bake-btn" disabled>🔒 Bake HTML</button>
+            <button onclick="openPrintModal()" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm font-medium transition print-hide">🖨️ Print / PDF</button>
+        </div>
+    </aside>
+
+    <main class="flex-1 overflow-y-auto p-8">
+        <!-- UPLOAD -->
+        <div id="tab-upload" class="tab-content active">
+            <h2 class="text-3xl font-bold mb-6">Load Financial Data</h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <div class="lg:col-span-2">
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+                        <h3 class="font-bold text-lg mb-4">Upload Financial Reports</h3>
+                        <p class="text-gray-600 mb-6">Create a ZIP file from QB exports. On Windows: right-click folder → Send to → Compressed (zipped) folder. On Mac: right-click → Compress. Then upload below.</p>
+                        <div class="border-2 border-dashed border-blue-300 rounded-lg p-12 text-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition" id="drop-zone">
+                            <div class="text-4xl mb-3">📁</div>
+                            <p class="font-semibold text-gray-800 mb-2">Click to select ZIP file</p>
+                            <p class="text-sm text-gray-500">(Drag-and-drop may not work on all devices)</p>
+                            <input type="file" id="zip-input" accept=".zip" class="hidden" />
+                        </div>
+                        <div id="load-status" class="mt-6 text-sm space-y-2"></div>
+                    </div>
+                </div>
+
+                <div class="bg-blue-50 rounded-lg shadow-sm border border-blue-200 p-6">
+                    <h3 class="font-bold mb-4 text-blue-900">Required File Names</h3>
+                    <div class="space-y-3 text-sm text-blue-900">
+                        <div>
+                            <p class="font-semibold">Accounts Receivable:</p>
+                            <p class="text-xs text-blue-700 font-mono bg-white px-2 py-1 rounded mt-1">ar.xlsx, customer balance*, receivable*</p>
+                        </div>
+                        <div>
+                            <p class="font-semibold">Accounts Payable:</p>
+                            <p class="text-xs text-blue-700 font-mono bg-white px-2 py-1 rounded mt-1">ap.xlsx, vendor balance*, payable*</p>
+                        </div>
+                        <div>
+                            <p class="font-semibold">Balance Sheet:</p>
+                            <p class="text-xs text-blue-700 font-mono bg-white px-2 py-1 rounded mt-1">balancesheet.xlsx, balance sheet*</p>
+                        </div>
+                        <div>
+                            <p class="font-semibold">Trial Balance:</p>
+                            <p class="text-xs text-blue-700 font-mono bg-white px-2 py-1 rounded mt-1">trial balance.xlsx, trial*, tb*</p>
+                        </div>
+                        <p class="text-xs text-blue-600 border-t border-blue-200 pt-3 mt-3">*Fuzzy match — exact names not required</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 class="font-bold text-lg mb-4">Document Checklist</h3>
+                <div class="space-y-3">
+                    <div class="flex items-start gap-3 p-3 bg-gray-50 rounded">
+                        <input type="checkbox" id="check-ar" class="mt-1">
+                        <div>
+                            <p class="font-semibold text-sm">📊 Accounts Receivable Aging Report</p>
+                            <p class="text-xs text-gray-500">From QB: Reports → Customers → Customer Balance Detail (A/R aging)</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3 p-3 bg-gray-50 rounded">
+                        <input type="checkbox" id="check-ap" class="mt-1">
+                        <div>
+                            <p class="font-semibold text-sm">📊 Accounts Payable Aging Report</p>
+                            <p class="text-xs text-gray-500">From QB: Reports → Vendors → Vendor Balance Detail (A/P aging)</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3 p-3 bg-gray-50 rounded">
+                        <input type="checkbox" id="check-bs" class="mt-1">
+                        <div>
+                            <p class="font-semibold text-sm">⚖️ Balance Sheet</p>
+                            <p class="text-xs text-gray-500">From QB: Reports → Company & Financial → Balance Sheet (Standard)</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3 p-3 bg-gray-50 rounded">
+                        <input type="checkbox" id="check-pl" class="mt-1">
+                        <div>
+                            <p class="font-semibold text-sm">📈 Profit & Loss</p>
+                            <p class="text-xs text-gray-500">From QB: Reports → Company & Financial → Profit & Loss (Standard)</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3 p-3 bg-gray-50 rounded">
+                        <input type="checkbox" id="check-tb" class="mt-1">
+                        <div>
+                            <p class="font-semibold text-sm">📋 Trial Balance</p>
+                            <p class="text-xs text-gray-500">From QB: Reports → Company & Financial → Trial Balance (all accounts with debits/credits)</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- LIBRARY -->
+        <div id="tab-library" class="tab-content">
+            <h2 class="text-3xl font-bold mb-6">Document Library</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div class="text-3xl mb-2">📄</div>
+                    <h3 class="font-bold mb-1">AR Aging</h3>
+                    <p class="text-xs mb-3 px-2 py-1 rounded text-white file-status-loading" id="ar-status">Not loaded</p>
+                    <button onclick="viewFile('arar')" class="text-sm text-blue-600 hover:underline" id="ar-btn" disabled>View Details</button>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div class="text-3xl mb-2">📄</div>
+                    <h3 class="font-bold mb-1">AP Aging</h3>
+                    <p class="text-xs mb-3 px-2 py-1 rounded text-white file-status-loading" id="ap-status">Not loaded</p>
+                    <button onclick="viewFile('arar')" class="text-sm text-blue-600 hover:underline" id="ap-btn" disabled>View Details</button>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div class="text-3xl mb-2">📄</div>
+                    <h3 class="font-bold mb-1">Balance Sheet</h3>
+                    <p class="text-xs mb-3 px-2 py-1 rounded text-white file-status-loading" id="bs-status">Not loaded</p>
+                    <button onclick="viewFile('bs')" class="text-sm text-blue-600 hover:underline" id="bs-btn" disabled>View Details</button>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div class="text-3xl mb-2">📄</div>
+                    <h3 class="font-bold mb-1">Trial Balance</h3>
+                    <p class="text-xs mb-3 px-2 py-1 rounded text-white file-status-loading" id="tb-status">Not loaded</p>
+                    <button onclick="viewFile('tb')" class="text-sm text-blue-600 hover:underline" id="tb-btn" disabled>View Details</button>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div class="text-3xl mb-2">📄</div>
+                    <h3 class="font-bold mb-1">Profit & Loss</h3>
+                    <p class="text-xs mb-3 px-2 py-1 rounded text-white file-status-loading" id="pl-status">Not loaded</p>
+                    <button onclick="viewFile('pl')" class="text-sm text-blue-600 hover:underline" id="pl-btn" disabled>View Details</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- DASHBOARD -->
+        <div id="tab-dashboard" class="tab-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-bold">Executive Summary</h2>
+                <button onclick="openSettings()" class="text-gray-600 hover:text-gray-900 text-2xl print-hide">⚙️</button>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div class="metric cursor-pointer hover:shadow-md hover:border-blue-400 transition" onclick="switchTab('bs')" title="View Balance Sheet">
+                    <div class="metric-label">Total Assets</div>
+                    <div class="metric-value" id="metric-assets">$0</div>
+                    <div class="text-xs text-gray-400 mt-1">→ Balance Sheet</div>
+                </div>
+                <div class="metric cursor-pointer hover:shadow-md hover:border-blue-400 transition" onclick="switchTab('bs')" title="View Balance Sheet">
+                    <div class="metric-label">Total Liabilities</div>
+                    <div class="metric-value negative" id="metric-liabilities">$0</div>
+                    <div class="text-xs text-gray-400 mt-1">→ Balance Sheet</div>
+                </div>
+                <div class="metric cursor-pointer hover:shadow-md hover:border-blue-400 transition" onclick="switchTab('bs')" title="View Balance Sheet">
+                    <div class="metric-label">Total Equity</div>
+                    <div class="metric-value" id="metric-equity">$0</div>
+                    <div class="text-xs text-gray-400 mt-1">→ Balance Sheet</div>
+                </div>
+                <div class="metric cursor-pointer hover:shadow-md hover:border-blue-400 transition" onclick="switchTab('pl')" title="View P&L">
+                    <div class="metric-label">Net Income</div>
+                    <div class="metric-value" id="metric-net">$0</div>
+                    <div class="text-xs text-gray-400 mt-1">→ Profit & Loss</div>
+                </div>
+                <div class="metric cursor-pointer hover:shadow-md hover:border-blue-400 transition" onclick="switchTab('pl')" title="View P&L">
+                    <div class="metric-label">Revenue</div>
+                    <div class="metric-value positive" id="metric-revenue">$0</div>
+                    <div class="text-xs text-gray-400 mt-1">→ Profit & Loss</div>
+                </div>
+                <div class="metric cursor-pointer hover:shadow-md hover:border-blue-400 transition" onclick="switchTab('pl')" title="View P&L">
+                    <div class="metric-label">Expenses</div>
+                    <div class="metric-value negative" id="metric-expenses">$0</div>
+                    <div class="text-xs text-gray-400 mt-1">→ Profit & Loss</div>
+                </div>
+                <div class="metric cursor-pointer hover:shadow-md hover:border-blue-400 transition" onclick="switchTab('arar')" title="View AR/AP">
+                    <div class="metric-label">AR Total</div>
+                    <div class="metric-value positive" id="metric-ar">$0</div>
+                    <div class="text-xs text-gray-400 mt-1">→ AR / AP</div>
+                </div>
+                <div class="metric cursor-pointer hover:shadow-md hover:border-blue-400 transition" onclick="switchTab('arar')" title="View AR/AP">
+                    <div class="metric-label">AP Total</div>
+                    <div class="metric-value negative" id="metric-ap">$0</div>
+                    <div class="text-xs text-gray-400 mt-1">→ AR / AP</div>
+                </div>
+            </div>
+
+            <div id="groq-section">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-2xl font-bold">AI Financial Analysis</h3>
+                    <button onclick="runGroqAnalysis()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium transition print-hide" id="analyze-btn" disabled>💡 Analyze</button>
+                </div>
+                <div id="insights-container" class="space-y-4">
+                    <div class="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center text-gray-500">
+                        <p>Enable Groq API to generate insights. Use the settings button (⚙️) to add your API key.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AR/AP -->
+        <div id="tab-arar" class="tab-content">
+            <h2 class="text-3xl font-bold mb-6">Accounts Receivable & Payable</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <h3 class="font-bold text-lg mb-4">Accounts Receivable</h3>
+                    <div id="ar-detail" class="overflow-x-auto"></div>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <h3 class="font-bold text-lg mb-4">Accounts Payable</h3>
+                    <div id="ap-detail" class="overflow-x-auto"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- P&L -->
+        <div id="tab-pl" class="tab-content">
+            <h2 class="text-3xl font-bold mb-6">Profit & Loss</h2>
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 overflow-x-auto">
+                <div id="pl-detail"></div>
+            </div>
+        </div>
+
+        <!-- BS -->
+        <div id="tab-bs" class="tab-content">
+            <h2 class="text-3xl font-bold mb-6">Balance Sheet</h2>
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 overflow-x-auto">
+                <div id="bs-detail"></div>
+            </div>
+        </div>
+
+        <!-- TB -->
+        <div id="tab-tb" class="tab-content">
+            <h2 class="text-3xl font-bold mb-6">Trial Balance</h2>
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 overflow-x-auto">
+                <div id="tb-detail"></div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- PRINT MODAL -->
+<div id="print-modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50 print-hide" style="display:none;">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+        <div class="bg-gray-900 px-8 py-6">
+            <div class="flex items-center gap-3">
+                <img id="print-modal-logo" src="" class="w-8 h-8 rounded-full">
+                <div>
+                    <h2 class="text-white text-lg font-bold">Generate PDF Report</h2>
+                    <p class="text-gray-400 text-xs">Select sections to include</p>
+                </div>
+            </div>
+        </div>
+        <div class="p-6 space-y-4">
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Company Name</label>
+                <input type="text" id="print-company" placeholder="e.g. TRSAV LLC" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500" />
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-3">Sections to Include</label>
+                <div class="space-y-2">
+                    <label class="flex items-center gap-3 cursor-pointer p-2 rounded hover:bg-gray-50">
+                        <input type="checkbox" class="print-section-check" value="summary" checked>
+                        <span class="text-sm">📊 Executive Summary (metrics)</span>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer p-2 rounded hover:bg-gray-50">
+                        <input type="checkbox" class="print-section-check" value="insights" checked>
+                        <span class="text-sm">💡 AI Financial Insights</span>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer p-2 rounded hover:bg-gray-50">
+                        <input type="checkbox" class="print-section-check" value="ar">
+                        <span class="text-sm">💰 Accounts Receivable</span>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer p-2 rounded hover:bg-gray-50">
+                        <input type="checkbox" class="print-section-check" value="ap">
+                        <span class="text-sm">💳 Accounts Payable</span>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer p-2 rounded hover:bg-gray-50">
+                        <input type="checkbox" class="print-section-check" value="pl">
+                        <span class="text-sm">📈 Profit & Loss</span>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer p-2 rounded hover:bg-gray-50">
+                        <input type="checkbox" class="print-section-check" value="bs">
+                        <span class="text-sm">⚖️ Balance Sheet</span>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer p-2 rounded hover:bg-gray-50">
+                        <input type="checkbox" class="print-section-check" value="tb">
+                        <span class="text-sm">📋 Trial Balance</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+        <div class="border-t border-gray-200 px-6 py-4 flex gap-3">
+            <button onclick="closePrintModal()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 transition">Cancel</button>
+            <button onclick="executePrint()" class="flex-1 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-black transition" style="background:#c9a227;color:#0f0c1a;">🖨️ Print / PDF</button>
+        </div>
+    </div>
+</div>
+
+<!-- HIDDEN PRINT DOCUMENT (rebuilt before each print) -->
+<div id="print-document" class="print-hide" style="display:none;"></div>
+
+<!-- LAZLAB LICENSE MODAL -->
+<div id="license-modal" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50 print-hide" style="display:none;">
+    <div class="bg-gray-950 text-white rounded-2xl shadow-2xl max-w-sm w-full mx-4 overflow-hidden">
+        <div class="flex flex-col items-center px-8 pt-10 pb-4 text-center">
+            <img id="lazlab-logo" src="" alt="LAZLAB" class="w-28 h-28 rounded-full mb-4 object-cover" />
+            <h2 class="text-2xl font-bold tracking-wide mb-1">Feature Locked</h2>
+            <p class="text-purple-400 text-sm font-semibold mb-4">LAZLAB Financial Review Package</p>
+            <p class="text-gray-300 text-sm leading-relaxed mb-4">This is a <strong class="text-white">view-only export</strong>. To upload financial data, enable AI analysis, or access settings, you need a licensed copy of this application.</p>
+            <div class="bg-gray-800 rounded-lg px-5 py-3 text-sm text-gray-400 w-full text-center mb-6">
+                Contact <span class="text-purple-400 font-semibold">LAZLAB Creations</span> to obtain a license and unlock the full platform.
+            </div>
+        </div>
+        <div class="border-t border-gray-800 px-8 py-4 flex flex-col gap-2">
+            <button onclick="closeLicenseModal()" class="w-full bg-purple-700 hover:bg-purple-600 text-white py-2 rounded-lg font-semibold text-sm transition">Got it — continue viewing</button>
+        </div>
+        <p class="text-center text-xs text-gray-600 pb-4">© 2026 LAZLAB Creations. All rights reserved.</p>
+    </div>
+</div>
+
+<div id="baked-data" style="display:none;"></div>
+
+<!-- SETTINGS MODAL -->
+<div id="settings-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 print-hide">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="sticky top-0 bg-white border-b border-gray-200 p-6 flex justify-between items-center">
+            <h2 class="text-2xl font-bold">Settings</h2>
+            <button onclick="closeSettings()" class="text-gray-500 hover:text-gray-700 text-2xl">✕</button>
+        </div>
+        
+        <div class="p-6 space-y-6">
+            <!-- Groq API Key -->
+            <div>
+                <h3 class="font-bold text-lg mb-2">AI Analysis</h3>
+                <label class="block text-sm text-gray-600 mb-2">Groq API Key</label>
+                <input type="password" id="groq-key-input" placeholder="gsk_..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <p class="text-xs text-gray-500 mt-2">Get a free API key at <a href="https://console.groq.com" target="_blank" class="text-blue-600 hover:underline">console.groq.com</a></p>
+                <button onclick="saveGroqKey()" class="mt-3 w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition">Save API Key</button>
+            </div>
+
+            <hr class="my-4">
+
+            <!-- Display Settings -->
+            <div>
+                <h3 class="font-bold text-lg mb-3">Display</h3>
+                <div class="space-y-3">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" id="dark-mode" class="rounded" />
+                        <span class="text-sm">Dark Mode</span>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" id="currency-format" checked class="rounded" />
+                        <span class="text-sm">Show Currency Symbols</span>
+                    </label>
+                    <div>
+                        <label class="text-sm text-gray-600 mb-2 block">Decimal Places</label>
+                        <select id="decimal-places" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                            <option value="0">0 (Whole dollars)</option>
+                            <option value="2" selected>2 (Cents)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="my-4">
+
+            <!-- About -->
+            <div>
+                <h3 class="font-bold text-lg mb-2">About</h3>
+                <div class="text-sm text-gray-600 space-y-2">
+                    <p><strong>Financial Review Package</strong></p>
+                    <p>v1.0 — Interactive financial analysis and reporting</p>
+                    <p class="pt-2">Built by <strong>LAZLAB Creations</strong></p>
+                    <p class="text-xs text-gray-500 mt-4">© 2026 LAZLAB Creations. All rights reserved.</p>
+                </div>
+            </div>
+
+            <hr class="my-4">
+
+            <!-- Data -->
+            <div>
+                <h3 class="font-bold text-lg mb-3">Data Management</h3>
+                <button onclick="exportData()" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-900 px-3 py-2 rounded-lg text-sm font-medium transition mb-2">📥 Export Data</button>
+                <button onclick="clearData()" class="w-full bg-red-100 hover:bg-red-200 text-red-900 px-3 py-2 rounded-lg text-sm font-medium transition">🗑️ Clear All Data</button>
+            </div>
+        </div>
+
+        <div class="border-t border-gray-200 p-4">
+            <button onclick="closeSettings()" class="w-full bg-gray-900 hover:bg-black text-white px-4 py-2 rounded-lg font-medium transition">Close</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const state = { files: {}, data: {} };
+
+    const LAZLAB_LOGO = "data:image/png;base64,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";
+
+    const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
+
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.getElementById(`tab-${tabName}`).classList.add('active');
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('bg-gray-800'));
+        document.querySelector(`[data-tab="${tabName}"]`)?.classList.add('bg-gray-800');
+    }
+
+    document.getElementById('drop-zone').addEventListener('click', () => {
+        if (window.isBaked) { showLicenseModal(); return; }
+        document.getElementById('zip-input').click();
+    });
+    document.getElementById('zip-input').addEventListener('change', (e) => {
+        if (window.isBaked) { showLicenseModal(); return; }
+        processZIP(e.target.files[0]);
+    });
+    ['dragover', 'drop', 'dragenter', 'dragleave'].forEach(evt => {
+        document.getElementById('drop-zone').addEventListener(evt, (e) => e.preventDefault());
+    });
+    document.getElementById('drop-zone').addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (window.isBaked) { showLicenseModal(); return; }
+        if (e.dataTransfer.files[0]) processZIP(e.dataTransfer.files[0]);
+    });
+
+    function detectType(filename) {
+        const lower = filename.toLowerCase().replace(/[._-]/g, ' ');
+        const patterns = {
+            ar: ['ar ', 'account.*receivable', 'customer.*balance', 'receivable'],
+            ap: ['ap ', 'account.*payable', 'vendor.*balance', 'payable'],
+            bs: ['balance.*sheet', 'statement.*financial position'],
+            tb: ['trial.*balance', 'trial', '\\btb\\b'],
+            pl: ['profit.*loss', '\\bp.*l\\b', 'income.*statement']
+        };
+        for (const [type, regexes] of Object.entries(patterns)) {
+            for (const pattern of regexes) {
+                if (new RegExp(pattern, 'i').test(lower)) return type;
+            }
+        }
+        return null;
+    }
+
+    async function processZIP(file) {
+        if (window.isBaked) { showLicenseModal(); return; }
+        const status = document.getElementById('load-status');
+        status.innerHTML = '<div class="text-blue-600">📂 Processing ZIP file...</div>';
+
+        try {
+            const zip = new JSZip();
+            const zipData = await zip.loadAsync(file);
+            const unknownFiles = [];
+
+            for (const filename of Object.keys(zipData.files)) {
+                if (!filename.endsWith('.xlsx')) continue;
+
+                const fileData = await zipData.file(filename).async('arraybuffer');
+                const workbook = XLSX.read(fileData, { type: 'array' });
+                const ws = workbook.Sheets[workbook.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+                const type = detectType(filename);
+                if (type) {
+                    state.files[type] = { filename, rows };
+                    status.innerHTML += `<div class="text-green-600">✓ ${filename} → ${type.toUpperCase()}</div>`;
+                } else {
+                    unknownFiles.push(filename);
+                }
+            }
+
+            status.innerHTML += '<div class="text-green-600 font-bold mt-3">✓ All files processed! Navigate to Dashboard to view.</div>';
+            populateAllData();
+            enableTabs();
+            updateLibrary();
+            switchTab('dashboard');
+
+        } catch (err) {
+            status.innerHTML = `<div class="text-red-600">❌ Error: ${err.message}</div>`;
+        }
+    }
+
+    function enableTabs() {
+        document.querySelectorAll('.nav-btn').forEach(b => b.disabled = false);
+        document.querySelectorAll('[id$="-btn"]').forEach(b => b.disabled = false);
+        document.getElementById('bake-btn').disabled = false;
+    }
+
+    function updateLibrary() {
+        const fileList = document.getElementById('file-list');
+        fileList.innerHTML = '';
+        for (const [type, fileInfo] of Object.entries(state.files)) {
+            const badge = document.createElement('div');
+            badge.className = 'px-3 py-2 bg-green-100 text-green-800 rounded text-xs flex justify-between items-center';
+            badge.innerHTML = `<span>✓ ${type.toUpperCase()}</span> <span class="text-xs">${fileInfo.filename}</span>`;
+            fileList.appendChild(badge);
+        }
+        
+        const statuses = { ar: 'ar-status', ap: 'ap-status', bs: 'bs-status', tb: 'tb-status', pl: 'pl-status' };
+        for (const [type, statusId] of Object.entries(statuses)) {
+            const el = document.getElementById(statusId);
+            if (state.files[type]) {
+                el.className = 'text-xs px-2 py-1 rounded text-white file-status-loaded';
+                el.textContent = '✓ Loaded';
+            }
+        }
+    }
+
+    function parseNum(val) {
+        if (!val) return 0;
+        if (typeof val === 'number') return val;
+        const str = val.toString().trim();
+        if (str.startsWith('=')) return 0;
+        const clean = str.replace(/[$,%\s()]/g, '').replace(/^\(/, '-');
+        return parseFloat(clean) || 0;
+    }
+
+    // ─── LAYER 1: Header Detection ───────────────────────────────────────────
+    // Scans rows to find header row, maps column names to indexes dynamically.
+    // Survives QB adding/reordering columns as long as header names stay similar.
+
+    function findHeaderRow(rows) {
+        // Look in first 5 rows for the one with the most non-empty cells
+        let bestRow = 0, bestScore = 0;
+        for (let i = 0; i < Math.min(5, rows.length); i++) {
+            const score = rows[i].filter(c => c && c.toString().trim().length > 0).length;
+            if (score > bestScore) { bestScore = score; bestRow = i; }
+        }
+        return bestRow;
+    }
+
+    function mapColumns(headerRow) {
+        // Maps semantic names → column indexes by fuzzy matching header text
+        const map = {};
+        const aliases = {
+            name:    ['name', 'vendor', 'customer', 'account', 'description', 'memo'],
+            total:   ['total', 'balance', 'amount', 'net'],
+            current: ['current'],
+            d1to30:  ['1 - 30', '1-30', '30'],
+            d31to60: ['31 - 60', '31-60', '60'],
+            d61to90: ['61 - 90', '61-90', '90'],
+            d90plus: ['> 90', '>90', 'over 90'],
+            debit:   ['debit', 'dr'],
+            credit:  ['credit', 'cr'],
+            adjDebit:  ['adj.*debit', 'adjusted debit'],
+            adjCredit: ['adj.*credit', 'adjusted credit'],
+            adjBalance: ['adj.*balance', 'adjusted balance'],
         };
 
-        function switchTab(tabId) {
-            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
-            document.getElementById(`view-${tabId}`).classList.remove('hidden');
-            
-            document.querySelectorAll('nav button').forEach(btn => btn.classList.remove('bg-slate-800'));
-            document.getElementById(`nav-${tabId}`).classList.add('bg-slate-800');
-
-            if(tabId === 'reports') {
-                const dateOpts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-                document.getElementById('report-date-display').innerText = 'Generated on: ' + new Date().toLocaleDateString('en-US', dateOpts);
-            }
-        }
-
-        function handleFiles(files) {
-            if(files.length > 0) {
-                document.getElementById('upload-status').classList.remove('hidden');
-                document.getElementById('upload-status').innerText = `Processing ${files.length} file(s)...`;
-                
-                globalLedgerData = [];
-                Object.keys(reportData).forEach(k => reportData[k] = 0);
-
-                Array.from(files).forEach(file => {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        Papa.parse(e.target.result, {
-                            skipEmptyLines: true,
-                            complete: function(results) {
-                                processData(results.data, file.name.toUpperCase());
-                            }
-                        });
-                    };
-                    reader.readAsText(file);
-                });
-
-                setTimeout(() => {
-                    document.getElementById('upload-status').innerText = "Data ingested successfully! See Dashboard & Reports.";
-                    updateUI();
-                }, 800);
-            }
-        }
-
-        function processData(rows, filename) {
-            const parseNum = (val) => parseFloat((val || '0').toString().replace(/[\$,]/g, '')) || 0;
-            const getLastNumber = (row) => {
-                for(let i = row.length - 1; i >= 0; i--) {
-                    const num = parseNum(row[i]);
-                    if (!isNaN(num) && row[i].toString().trim() !== '') return num;
+        headerRow.forEach((cell, idx) => {
+            if (!cell) return;
+            const lower = cell.toString().toLowerCase().trim();
+            for (const [key, patterns] of Object.entries(aliases)) {
+                if (map[key] !== undefined) continue;
+                if (patterns.some(p => new RegExp(p, 'i').test(lower))) {
+                    map[key] = idx;
                 }
-                return 0;
+            }
+        });
+
+        return map;
+    }
+
+    function findAmountColumn(rows, headerIdx) {
+        // For hierarchical reports (BS, PL) — find rightmost column with numeric data
+        const counts = {};
+        for (let i = headerIdx + 1; i < rows.length; i++) {
+            const row = rows[i];
+            for (let c = row.length - 1; c >= 0; c--) {
+                const v = parseNum(row[c]);
+                if (v !== 0) { counts[c] = (counts[c] || 0) + 1; break; }
+            }
+        }
+        return parseInt(Object.entries(counts).sort((a,b) => b[1]-a[1])[0]?.[0] ?? -1);
+    }
+
+    function findNameColumn(rows, headerIdx) {
+        // Find leftmost column with non-numeric, non-empty text data
+        const counts = {};
+        for (let i = headerIdx + 1; i < Math.min(headerIdx + 20, rows.length); i++) {
+            const row = rows[i];
+            for (let c = 0; c < row.length; c++) {
+                const v = row[c]?.toString().trim();
+                if (v && isNaN(parseFloat(v)) && !v.startsWith('=') && v.length > 2) {
+                    counts[c] = (counts[c] || 0) + 1;
+                    break;
+                }
+            }
+        }
+        return parseInt(Object.entries(counts).sort((a,b) => b[1]-a[1])[0]?.[0] ?? 0);
+    }
+
+    // ─── LAYER 2: Groq Structure Detection ───────────────────────────────────
+    // If header detection finds 0 useful columns, sends sample rows to Groq
+    // which returns a column map. Used for unknown/new report types.
+
+    async function groqDetectStructure(rows, reportType) {
+        const groqKey = localStorage.getItem('groq_api_key');
+        if (!groqKey) return null;
+
+        const sample = rows.slice(0, 10).map((r, i) => `Row ${i}: ${JSON.stringify(r)}`).join('\n');
+
+        try {
+            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model: 'llama-3.3-70b-versatile',
+                    messages: [{
+                        role: 'user',
+                        content: `This is a QuickBooks ${reportType} export. Identify column indexes (0-based).
+Return ONLY valid JSON like: {"name":1,"total":6,"current":2,"d1to30":3,"d31to60":4,"d61to90":5,"d90plus":6,"headerRow":0}
+Only include keys you are confident about. Data sample:\n${sample}`
+                    }],
+                    max_tokens: 200,
+                    temperature: 0
+                })
+            });
+            const data = await response.json();
+            const text = data.choices?.[0]?.message?.content || '';
+            const match = text.match(/\{[\s\S]+\}/);
+            if (match) return JSON.parse(match[0]);
+        } catch (e) {
+            console.warn('Groq structure detection failed:', e);
+        }
+        return null;
+    }
+
+    // ─── Populate Functions (use header detection, fall back to Groq) ─────────
+
+    function populateAllData() {
+        if (state.files.ar) populateAR();
+        if (state.files.ap) populateAP();
+        if (state.files.bs) populateBS();
+        if (state.files.pl) populatePL();
+        if (state.files.tb) populateTB();
+        updateDashboard();
+    }
+
+    async function populateAR() {
+        const { rows } = state.files.ar;
+        state.data.ar = { vendors: [], total: 0, colMap: {} };
+
+        const headerIdx = findHeaderRow(rows);
+        let colMap = mapColumns(rows[headerIdx]);
+
+        // If we couldn't find key columns, try Groq
+        if (colMap.name === undefined || colMap.total === undefined) {
+            console.log('AR: header detection insufficient, trying Groq...');
+            const groqMap = await groqDetectStructure(rows, 'Accounts Receivable Aging');
+            if (groqMap) colMap = { ...colMap, ...groqMap };
+        }
+
+        state.data.ar.colMap = colMap;
+        const nameCol = colMap.name ?? 1;
+        const totalCol = colMap.total ?? rows[0].length - 1;
+
+        for (let i = headerIdx + 1; i < rows.length; i++) {
+            const row = rows[i];
+            if (!row[nameCol]) continue;
+            const vendor = row[nameCol].toString().trim();
+            if (!vendor || vendor.toUpperCase() === 'TOTAL') continue;
+            const amount = parseNum(row[totalCol]);
+            if (amount === 0) continue;
+
+            state.data.ar.vendors.push({
+                vendor,
+                current:  parseNum(row[colMap.current ?? 2]),
+                d1to30:   parseNum(row[colMap.d1to30  ?? 3]),
+                d31to60:  parseNum(row[colMap.d31to60 ?? 4]),
+                d61to90:  parseNum(row[colMap.d61to90 ?? 5]),
+                d90plus:  parseNum(row[colMap.d90plus ?? 6]),
+                total:    amount
+            });
+            state.data.ar.total += amount;
+        }
+        renderARDetail();
+        updateDashboard();
+    }
+
+    async function populateAP() {
+        const { rows } = state.files.ap;
+        state.data.ap = { vendors: [], total: 0, colMap: {} };
+
+        const headerIdx = findHeaderRow(rows);
+        let colMap = mapColumns(rows[headerIdx]);
+
+        if (colMap.name === undefined || colMap.total === undefined) {
+            console.log('AP: header detection insufficient, trying Groq...');
+            const groqMap = await groqDetectStructure(rows, 'Accounts Payable Aging');
+            if (groqMap) colMap = { ...colMap, ...groqMap };
+        }
+
+        state.data.ap.colMap = colMap;
+        const nameCol = colMap.name ?? 1;
+        const totalCol = colMap.total ?? rows[0].length - 1;
+
+        for (let i = headerIdx + 1; i < rows.length; i++) {
+            const row = rows[i];
+            if (!row[nameCol]) continue;
+            const vendor = row[nameCol].toString().trim();
+            if (!vendor || vendor.toUpperCase() === 'TOTAL') continue;
+            const amount = parseNum(row[totalCol]);
+            if (amount === 0) continue;
+
+            state.data.ap.vendors.push({
+                vendor,
+                current:  parseNum(row[colMap.current ?? 2]),
+                d1to30:   parseNum(row[colMap.d1to30  ?? 3]),
+                d31to60:  parseNum(row[colMap.d31to60 ?? 4]),
+                d61to90:  parseNum(row[colMap.d61to90 ?? 5]),
+                d90plus:  parseNum(row[colMap.d90plus ?? 6]),
+                total:    amount
+            });
+            state.data.ap.total += amount;
+        }
+        renderAPDetail();
+        updateDashboard();
+    }
+
+    async function populateBS() {
+        const { rows } = state.files.bs;
+        state.data.bs = { accounts: [], totalAssets: 0, totalLiab: 0, totalEquity: 0 };
+
+        // BS is hierarchical — use content-based column detection
+        const amtCol = findAmountColumn(rows, 0);
+        const nameCol = findNameColumn(rows, 0);
+
+        console.log(`BS: detected name col=${nameCol}, amount col=${amtCol}`);
+
+        if (amtCol < 0) {
+            console.log('BS: column detection failed, trying Groq...');
+            const groqMap = await groqDetectStructure(rows, 'Balance Sheet');
+            if (groqMap) {
+                // re-run with Groq's column map
+            }
+        }
+
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            let lineText = '';
+            let depth = 0;
+
+            // Walk columns 0→3 to find the label, depth = which col it's in
+            for (let c = 0; c <= 3; c++) {
+                if (row[c] && row[c].toString().trim().length > 0) {
+                    lineText = row[c].toString().trim();
+                    depth = c;
+                    break;
+                }
+            }
+
+            const amount = parseNum(row[amtCol >= 0 ? amtCol : 6]);
+
+            if (lineText.length > 0) {
+                state.data.bs.accounts.push({ line: lineText, amount, depth });
+                const upper = lineText.toUpperCase();
+                if (upper === 'TOTAL ASSETS') state.data.bs.totalAssets = amount;
+                if (upper.includes('TOTAL LIABILITIES')) state.data.bs.totalLiab = amount;
+                if (upper === 'TOTAL EQUITY') state.data.bs.totalEquity = amount;
+            }
+        }
+        renderBSDetail();
+        updateDashboard();
+    }
+
+    async function populatePL() {
+        const { rows } = state.files.pl;
+        state.data.pl = { accounts: [], totalIncome: 0, totalExpense: 0, netIncome: 0 };
+
+        const amtCol = findAmountColumn(rows, 0);
+        const nameCol = findNameColumn(rows, 0);
+
+        console.log(`PL: detected name col=${nameCol}, amount col=${amtCol}`);
+
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            let lineText = '';
+            let depth = 0;
+
+            for (let c = 0; c <= 3; c++) {
+                if (row[c] && row[c].toString().trim().length > 0) {
+                    lineText = row[c].toString().trim();
+                    depth = c;
+                    break;
+                }
+            }
+
+            const amount = parseNum(row[amtCol >= 0 ? amtCol : row.length - 1]);
+
+            if (lineText.length > 0) {
+                state.data.pl.accounts.push({ line: lineText, amount, depth });
+                const upper = lineText.toUpperCase();
+                if (upper.includes('TOTAL INCOME') || upper.includes('TOTAL REVENUE')) state.data.pl.totalIncome = amount;
+                if (upper.includes('TOTAL EXPENSE')) state.data.pl.totalExpense = amount;
+                if (upper.includes('NET INCOME') || upper.includes('NET ORDINARY INCOME')) state.data.pl.netIncome = amount;
+            }
+        }
+        renderPLDetail();
+        updateDashboard();
+    }
+
+    async function populateTB() {
+        const { rows } = state.files.tb;
+        state.data.tb = { accounts: [], colMap: {} };
+
+        const headerIdx = findHeaderRow(rows);
+        let colMap = mapColumns(rows[headerIdx]);
+
+        if (colMap.debit === undefined) {
+            console.log('TB: header detection insufficient, trying Groq...');
+            const groqMap = await groqDetectStructure(rows, 'Trial Balance');
+            if (groqMap) colMap = { ...colMap, ...groqMap };
+        }
+
+        state.data.tb.colMap = colMap;
+        const nameCol   = colMap.name       ?? 1;
+        const debitCol  = colMap.debit      ?? 2;
+        const creditCol = colMap.credit     ?? 3;
+        const adjDCol   = colMap.adjDebit   ?? 4;
+        const adjCCol   = colMap.adjCredit  ?? 5;
+        const adjBCol   = colMap.adjBalance ?? 6;
+
+        for (let i = headerIdx + 1; i < rows.length; i++) {
+            const row = rows[i];
+            if (!row[nameCol]) continue;
+            const account = row[nameCol].toString().trim();
+            if (!account || account.toUpperCase() === 'TOTAL') continue;
+
+            const debit      = parseNum(row[debitCol]);
+            const credit     = parseNum(row[creditCol]);
+            const adjDebit   = parseNum(row[adjDCol]);
+            const adjCredit  = parseNum(row[adjCCol]);
+            const adjBalance = parseNum(row[adjBCol]);
+
+            if (debit !== 0 || credit !== 0 || adjBalance !== 0) {
+                state.data.tb.accounts.push({ account, debit, credit, adjDebit, adjCredit, adjBalance });
+            }
+        }
+        renderTBDetail();
+    }
+
+    function renderARDetail() {
+        const html = `<table><tr><th>Vendor</th><th>Current</th><th>1-30</th><th>31-60</th><th>61-90</th><th>>90</th><th>Total</th></tr>` +
+            state.data.ar.vendors.map(v => `<tr><td>${v.vendor}</td><td>${fmt(v.current)}</td><td>${fmt(v.d1to30)}</td><td>${fmt(v.d31to60)}</td><td>${fmt(v.d61to90)}</td><td>${fmt(v.d90plus)}</td><td><strong>${fmt(v.total)}</strong></td></tr>`).join('') +
+            `<tr style="font-weight:bold;background:#f3f4f6"><td>TOTAL</td><td colspan="5"></td><td>${fmt(state.data.ar.total)}</td></tr></table>`;
+        document.getElementById('ar-detail').innerHTML = html;
+    }
+
+    function renderAPDetail() {
+        const html = `<table><tr><th>Vendor</th><th>Current</th><th>1-30</th><th>31-60</th><th>61-90</th><th>>90</th><th>Total</th></tr>` +
+            state.data.ap.vendors.map(v => `<tr><td>${v.vendor}</td><td>${fmt(v.current)}</td><td>${fmt(v.d1to30)}</td><td>${fmt(v.d31to60)}</td><td>${fmt(v.d61to90)}</td><td>${fmt(v.d90plus)}</td><td><strong>${fmt(v.total)}</strong></td></tr>`).join('') +
+            `<tr style="font-weight:bold;background:#f3f4f6"><td>TOTAL</td><td colspan="5"></td><td>${fmt(state.data.ap.total)}</td></tr></table>`;
+        document.getElementById('ap-detail').innerHTML = html;
+    }
+
+    function renderBSDetail() {
+        const html = `<table><tr><th>Account</th><th style="text-align:right;">Amount</th></tr>` +
+            state.data.bs.accounts.map(a => {
+                const indent = a.depth * 20;
+                const isBold = a.line.toUpperCase().includes('TOTAL') ? 'font-weight:bold;' : '';
+                return `<tr><td style="padding-left:${indent}px;${isBold}">${a.line}</td><td style="text-align:right;${isBold}">${fmt(a.amount)}</td></tr>`;
+            }).join('') +
+            `</table>`;
+        document.getElementById('bs-detail').innerHTML = html;
+    }
+
+    function renderPLDetail() {
+        const html = `<table><tr><th>Account</th><th>Amount</th></tr>` +
+            state.data.pl.accounts.map(a => `<tr><td style="padding-left:${a.depth}px;">${a.line}</td><td align="right">${fmt(a.amount)}</td></tr>`).join('') +
+            `</table>`;
+        document.getElementById('pl-detail').innerHTML = html;
+    }
+
+    function renderTBDetail() {
+        const html = `<table><tr><th>Account</th><th>Debit</th><th>Credit</th><th>Adj Debit</th><th>Adj Credit</th><th>Balance</th></tr>` +
+            state.data.tb.accounts.map(a => `<tr><td>${a.account}</td><td align="right">${fmt(a.debit)}</td><td align="right">${fmt(a.credit)}</td><td align="right">${fmt(a.adjDebit)}</td><td align="right">${fmt(a.adjCredit)}</td><td align="right"><strong>${fmt(a.adjBalance)}</strong></td></tr>`).join('') +
+            `</table>`;
+        document.getElementById('tb-detail').innerHTML = html;
+    }
+
+    function updateDashboard() {
+        document.getElementById('metric-assets').textContent = fmt(state.data.bs?.totalAssets || 0);
+        document.getElementById('metric-liabilities').textContent = fmt(state.data.bs?.totalLiab || 0);
+        document.getElementById('metric-equity').textContent = fmt(state.data.bs?.totalEquity || 0);
+        document.getElementById('metric-revenue').textContent = fmt(state.data.pl?.totalIncome || 0);
+        document.getElementById('metric-expenses').textContent = fmt(state.data.pl?.totalExpense || 0);
+        document.getElementById('metric-net').textContent = fmt(state.data.pl?.netIncome || 0);
+        document.getElementById('metric-ar').textContent = fmt(state.data.ar?.total || 0);
+        document.getElementById('metric-ap').textContent = fmt(state.data.ap?.total || 0);
+    }
+
+    function viewFile(tab) {
+        switchTab(tab);
+    }
+
+    function bakeHTML() {
+        const includeAI = document.getElementById('include-ai').checked;
+        const safeState = { data: state.data };
+        const aiInsights = includeAI ? (document.getElementById('insights-container')?.innerHTML || '') : '';
+        const fmt_fn = `const fmt=(n)=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(n);`;
+
+        const viewer = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Financial Review \u2014 LAZLAB</title>
+<script src="https://cdn.tailwindcss.com"><\/script>
+<style>
+@media print{aside{display:none!important}main{width:100%!important;padding:0!important}body{background:white!important}.no-print{display:none!important}}
+.tab-content{display:none}.tab-content.active{display:block}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:#f3f4f6;border:1px solid #e5e7eb;padding:8px;text-align:left;font-weight:600}
+td{border:1px solid #e5e7eb;padding:8px}tr:hover{background:#f9fafb}
+.metric{background:#f9fafb;border:1px solid #e5e7eb;padding:12px;border-radius:6px;cursor:pointer;transition:box-shadow 0.15s,border-color 0.15s}
+.metric:hover{box-shadow:0 2px 8px rgba(0,0,0,0.1);border-color:#93c5fd}
+.metric-label{font-size:12px;color:#6b7280}.metric-value{font-size:20px;font-weight:bold;color:#111827;margin-top:4px}
+.positive{color:#059669}.negative{color:#dc2626}
+</style>
+</head>
+<body class="bg-gray-50">
+<div class="flex h-screen overflow-hidden">
+<aside class="w-72 bg-gray-900 text-white flex flex-col overflow-y-auto">
+  <div class="p-6 border-b border-gray-700">
+    <div class="flex items-center gap-3 mb-1">
+      <img src="${LAZLAB_LOGO}" class="w-8 h-8 rounded-full">
+      <h1 class="text-xl font-bold">Financial Review</h1>
+    </div>
+    <p class="text-xs text-gray-400">View-only package</p>
+  </div>
+  <div class="flex-1 overflow-y-auto">
+    <div class="px-4 py-4 border-b border-gray-700">
+      <p class="text-xs font-semibold text-gray-400 uppercase mb-3">Navigation</p>
+      <nav class="space-y-1">
+        <button onclick="switchTab('dashboard')" class="nav-btn w-full text-left px-3 py-2 rounded hover:bg-gray-800 text-sm bg-gray-800" data-tab="dashboard">\u{1F4CA} Dashboard</button>
+        <button onclick="switchTab('arar')" class="nav-btn w-full text-left px-3 py-2 rounded hover:bg-gray-800 text-sm" data-tab="arar">\u{1F4B0} AR / AP</button>
+        <button onclick="switchTab('pl')" class="nav-btn w-full text-left px-3 py-2 rounded hover:bg-gray-800 text-sm" data-tab="pl">\u{1F4C8} P&amp;L</button>
+        <button onclick="switchTab('bs')" class="nav-btn w-full text-left px-3 py-2 rounded hover:bg-gray-800 text-sm" data-tab="bs">\u2696\uFE0F Balance Sheet</button>
+        <button onclick="switchTab('tb')" class="nav-btn w-full text-left px-3 py-2 rounded hover:bg-gray-800 text-sm" data-tab="tb">\u{1F4CB} Trial Balance</button>
+      </nav>
+    </div>
+    <div class="px-4 py-4">
+      <p class="text-xs font-semibold text-gray-400 uppercase mb-3">Loaded Reports</p>
+      <div class="space-y-1 text-xs">${Object.keys(state.files).map(t=>`<div class="px-3 py-2 bg-green-900/40 text-green-400 rounded">\u2713 ${t.toUpperCase()}</div>`).join('')}</div>
+    </div>
+  </div>
+  <div class="border-t border-gray-700 p-4 space-y-2">
+    <button onclick="window.print()" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm font-medium no-print">\u{1F5A8}\uFE0F Print / PDF</button>
+    <p class="text-center text-xs text-gray-500 pt-1">\u00A9 2026 LAZLAB Creations</p>
+  </div>
+</aside>
+<main class="flex-1 overflow-y-auto">
+  <div class="text-white text-xs py-2 px-6 flex items-center gap-3 no-print" style="background:#1a0a2e;">
+    <img src="${LAZLAB_LOGO}" class="w-5 h-5 rounded-full">
+    <span><strong>LAZLAB Financial Review Package</strong> &nbsp;\u2014&nbsp; View-only export. To unlock full features, contact <span style="color:#c084fc;font-weight:600;">LAZLAB Creations</span>.</span>
+  </div>
+  <div class="p-8">
+    <div id="tab-dashboard" class="tab-content active">
+      <h2 class="text-3xl font-bold mb-6">Executive Summary</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div class="metric" onclick="switchTab('bs')"><div class="metric-label">Total Assets</div><div class="metric-value" id="metric-assets">$0</div><div class="text-xs text-gray-400 mt-1">\u2192 Balance Sheet</div></div>
+        <div class="metric" onclick="switchTab('bs')"><div class="metric-label">Total Liabilities</div><div class="metric-value negative" id="metric-liabilities">$0</div><div class="text-xs text-gray-400 mt-1">\u2192 Balance Sheet</div></div>
+        <div class="metric" onclick="switchTab('bs')"><div class="metric-label">Total Equity</div><div class="metric-value" id="metric-equity">$0</div><div class="text-xs text-gray-400 mt-1">\u2192 Balance Sheet</div></div>
+        <div class="metric" onclick="switchTab('pl')"><div class="metric-label">Net Income</div><div class="metric-value" id="metric-net">$0</div><div class="text-xs text-gray-400 mt-1">\u2192 Profit &amp; Loss</div></div>
+        <div class="metric" onclick="switchTab('pl')"><div class="metric-label">Revenue</div><div class="metric-value positive" id="metric-revenue">$0</div><div class="text-xs text-gray-400 mt-1">\u2192 Profit &amp; Loss</div></div>
+        <div class="metric" onclick="switchTab('pl')"><div class="metric-label">Expenses</div><div class="metric-value negative" id="metric-expenses">$0</div><div class="text-xs text-gray-400 mt-1">\u2192 Profit &amp; Loss</div></div>
+        <div class="metric" onclick="switchTab('arar')"><div class="metric-label">AR Total</div><div class="metric-value positive" id="metric-ar">$0</div><div class="text-xs text-gray-400 mt-1">\u2192 AR / AP</div></div>
+        <div class="metric" onclick="switchTab('arar')"><div class="metric-label">AP Total</div><div class="metric-value negative" id="metric-ap">$0</div><div class="text-xs text-gray-400 mt-1">\u2192 AR / AP</div></div>
+      </div>
+      ${includeAI && aiInsights ? `<div><h3 class="text-2xl font-bold mb-4">AI Financial Analysis</h3><div class="space-y-4">${aiInsights}</div></div>` : ''}
+    </div>
+    <div id="tab-arar" class="tab-content">
+      <h2 class="text-3xl font-bold mb-6">Accounts Receivable &amp; Payable</h2>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6"><h3 class="font-bold text-lg mb-4">Accounts Receivable</h3><div id="ar-detail" class="overflow-x-auto"></div></div>
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6"><h3 class="font-bold text-lg mb-4">Accounts Payable</h3><div id="ap-detail" class="overflow-x-auto"></div></div>
+      </div>
+    </div>
+    <div id="tab-pl" class="tab-content"><h2 class="text-3xl font-bold mb-6">Profit &amp; Loss</h2><div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 overflow-x-auto"><div id="pl-detail"></div></div></div>
+    <div id="tab-bs" class="tab-content"><h2 class="text-3xl font-bold mb-6">Balance Sheet</h2><div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 overflow-x-auto"><div id="bs-detail"></div></div></div>
+    <div id="tab-tb" class="tab-content"><h2 class="text-3xl font-bold mb-6">Trial Balance</h2><div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 overflow-x-auto"><div id="tb-detail"></div></div></div>
+  </div>
+</main>
+</div>
+<script>
+const state=${JSON.stringify(safeState)};
+${fmt_fn}
+function switchTab(t){document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));document.getElementById('tab-'+t).classList.add('active');document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('bg-gray-800'));document.querySelector('[data-tab="'+t+'"]')?.classList.add('bg-gray-800');}
+function renderAll(){
+  const d=state.data;
+  if(d.ar){
+    document.getElementById('ar-detail').innerHTML='<table><tr><th>Vendor</th><th>Current</th><th>1-30</th><th>31-60</th><th>61-90</th><th>>90</th><th>Total</th></tr>'+d.ar.vendors.map(v=>'<tr><td>'+v.vendor+'</td><td>'+fmt(v.current)+'</td><td>'+fmt(v.d1to30)+'</td><td>'+fmt(v.d31to60)+'</td><td>'+fmt(v.d61to90)+'</td><td>'+fmt(v.d90plus)+'</td><td><strong>'+fmt(v.total)+'</strong></td></tr>').join('')+'<tr style="font-weight:bold;background:#f3f4f6"><td>TOTAL</td><td colspan="5"></td><td>'+fmt(d.ar.total)+'</td></tr></table>';
+    document.getElementById('metric-ar').textContent=fmt(d.ar.total);
+  }
+  if(d.ap){
+    document.getElementById('ap-detail').innerHTML='<table><tr><th>Vendor</th><th>Current</th><th>1-30</th><th>31-60</th><th>61-90</th><th>>90</th><th>Total</th></tr>'+d.ap.vendors.map(v=>'<tr><td>'+v.vendor+'</td><td>'+fmt(v.current)+'</td><td>'+fmt(v.d1to30)+'</td><td>'+fmt(v.d31to60)+'</td><td>'+fmt(v.d61to90)+'</td><td>'+fmt(v.d90plus)+'</td><td><strong>'+fmt(v.total)+'</strong></td></tr>').join('')+'<tr style="font-weight:bold;background:#f3f4f6"><td>TOTAL</td><td colspan="5"></td><td>'+fmt(d.ap.total)+'</td></tr></table>';
+    document.getElementById('metric-ap').textContent=fmt(d.ap.total);
+  }
+  if(d.bs){
+    document.getElementById('bs-detail').innerHTML='<table><tr><th>Account</th><th style="text-align:right">Amount</th></tr>'+d.bs.accounts.map(a=>{const b=a.line.toUpperCase().includes('TOTAL')?'font-weight:bold;':'';return'<tr><td style="padding-left:'+(a.depth*20)+'px;'+b+'">'+a.line+'</td><td style="text-align:right;'+b+'">'+fmt(a.amount)+'</td></tr>';}).join('')+'</table>';
+    document.getElementById('metric-assets').textContent=fmt(d.bs.totalAssets||0);
+    document.getElementById('metric-liabilities').textContent=fmt(d.bs.totalLiab||0);
+    document.getElementById('metric-equity').textContent=fmt(d.bs.totalEquity||0);
+  }
+  if(d.pl){
+    document.getElementById('pl-detail').innerHTML='<table><tr><th>Account</th><th>Amount</th></tr>'+d.pl.accounts.map(a=>'<tr><td style="padding-left:'+(a.depth*20)+'px">'+a.line+'</td><td align="right">'+fmt(a.amount)+'</td></tr>').join('')+'</table>';
+    document.getElementById('metric-revenue').textContent=fmt(d.pl.totalIncome||0);
+    document.getElementById('metric-expenses').textContent=fmt(d.pl.totalExpense||0);
+    document.getElementById('metric-net').textContent=fmt(d.pl.netIncome||0);
+  }
+  if(d.tb){
+    document.getElementById('tb-detail').innerHTML='<table><tr><th>Account</th><th>Debit</th><th>Credit</th><th>Adj Debit</th><th>Adj Credit</th><th>Balance</th></tr>'+d.tb.accounts.map(a=>'<tr><td>'+a.account+'</td><td align="right">'+fmt(a.debit)+'</td><td align="right">'+fmt(a.credit)+'</td><td align="right">'+fmt(a.adjDebit)+'</td><td align="right">'+fmt(a.adjCredit)+'</td><td align="right"><strong>'+fmt(a.adjBalance)+'</strong></td></tr>').join('')+'</table>';
+  }
+}
+renderAll();
+<\/script>
+</body>
+</html>`;
+
+        const blob = new Blob([viewer], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Financial-Review-${new Date().toISOString().split('T')[0]}.html`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function openPrintModal() {
+        document.getElementById('print-modal-logo').src = LAZLAB_LOGO;
+        document.getElementById('print-modal').style.display = 'flex';
+        // Auto-check only sections that have data
+        document.querySelectorAll('.print-section-check').forEach(cb => {
+            const v = cb.value;
+            if (v === 'summary') { cb.checked = true; return; }
+            if (v === 'insights') { cb.checked = document.getElementById('insights-container')?.querySelector('[style]') ? true : false; return; }
+            if (v === 'ar') cb.checked = !!(state.data.ar?.vendors?.length);
+            if (v === 'ap') cb.checked = !!(state.data.ap?.vendors?.length);
+            if (v === 'pl') cb.checked = !!(state.data.pl?.accounts?.length);
+            if (v === 'bs') cb.checked = !!(state.data.bs?.accounts?.length);
+            if (v === 'tb') cb.checked = !!(state.data.tb?.accounts?.length);
+        });
+    }
+
+    function closePrintModal() {
+        document.getElementById('print-modal').style.display = 'none';
+    }
+
+    function executePrint() {
+        const company = document.getElementById('print-company').value.trim() || 'Financial Report';
+        const selected = Array.from(document.querySelectorAll('.print-section-check:checked')).map(c => c.value);
+        const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        const period = state.files.bs?.filename?.match(/\w+ \d+, \d+/)?.[0] || date;
+
+        let doc = '';
+
+        // ── Cover Page ──────────────────────────────────────────────
+        doc += `
+        <div id="print-cover">
+            <img class="cover-logo" src="${LAZLAB_LOGO}" alt="LAZLAB">
+            <div class="cover-brand">LAZLAB Creations</div>
+            <div class="cover-title">Financial Review</div>
+            <div class="cover-company">${company}</div>
+            <div class="cover-divider"></div>
+            <div class="cover-meta">
+                <div>Report Period: ${period}</div>
+                <div>Generated: ${date}</div>
+                <div>Prepared by LAZLAB Financial Review Platform</div>
+            </div>
+        </div>`;
+
+        // ── Executive Summary ────────────────────────────────────────
+        if (selected.includes('summary')) {
+            doc += `
+            <div class="print-section">
+                <div class="print-section-header">
+                    <h2>Executive Summary</h2>
+                    <img class="section-logo" src="${LAZLAB_LOGO}" alt="LAZLAB">
+                </div>
+                <div class="print-metrics-grid">
+                    <div class="print-metric-card"><div class="pm-label">Total Assets</div><div class="pm-value">${fmt(state.data.bs?.totalAssets||0)}</div></div>
+                    <div class="print-metric-card"><div class="pm-label">Total Liabilities</div><div class="pm-value">${fmt(state.data.bs?.totalLiab||0)}</div></div>
+                    <div class="print-metric-card"><div class="pm-label">Total Equity</div><div class="pm-value">${fmt(state.data.bs?.totalEquity||0)}</div></div>
+                    <div class="print-metric-card"><div class="pm-label">Net Income</div><div class="pm-value">${fmt(state.data.pl?.netIncome||0)}</div></div>
+                    <div class="print-metric-card"><div class="pm-label">Revenue</div><div class="pm-value">${fmt(state.data.pl?.totalIncome||0)}</div></div>
+                    <div class="print-metric-card"><div class="pm-label">Expenses</div><div class="pm-value">${fmt(state.data.pl?.totalExpense||0)}</div></div>
+                    <div class="print-metric-card"><div class="pm-label">AR Total</div><div class="pm-value">${fmt(state.data.ar?.total||0)}</div></div>
+                    <div class="print-metric-card"><div class="pm-label">AP Total</div><div class="pm-value">${fmt(state.data.ap?.total||0)}</div></div>
+                </div>
+            </div>`;
+        }
+
+        // ── AI Insights ──────────────────────────────────────────────
+        if (selected.includes('insights')) {
+            const insightsHTML = document.getElementById('insights-container')?.innerHTML || '';
+            if (insightsHTML && !insightsHTML.includes('Enable Groq')) {
+                // Convert screen insight cards to print insight cards
+                const parser = new DOMParser();
+                const parsed = parser.parseFromString(insightsHTML, 'text/html');
+                const cards = Array.from(parsed.querySelectorAll('div[style]'));
+                const printCards = cards.map(c => `<div class="print-insight"><p>${c.textContent.trim()}</p></div>`).join('');
+
+                doc += `
+                <div class="print-section">
+                    <div class="print-section-header">
+                        <h2>AI Financial Analysis</h2>
+                        <img class="section-logo" src="${LAZLAB_LOGO}" alt="LAZLAB">
+                    </div>
+                    ${printCards}
+                </div>`;
+            }
+        }
+
+        // ── AR ────────────────────────────────────────────────────────
+        if (selected.includes('ar') && state.data.ar?.vendors?.length) {
+            doc += `
+            <div class="print-section">
+                <div class="print-section-header">
+                    <h2>Accounts Receivable</h2>
+                    <img class="section-logo" src="${LAZLAB_LOGO}" alt="LAZLAB">
+                </div>
+                <table>
+                    <tr><th>Customer</th><th>Current</th><th>1–30</th><th>31–60</th><th>61–90</th><th>&gt;90</th><th>Total</th></tr>
+                    ${state.data.ar.vendors.map(v=>`<tr><td>${v.vendor}</td><td>${fmt(v.current)}</td><td>${fmt(v.d1to30)}</td><td>${fmt(v.d31to60)}</td><td>${fmt(v.d61to90)}</td><td>${fmt(v.d90plus)}</td><td>${fmt(v.total)}</td></tr>`).join('')}
+                    <tr><td><strong>TOTAL</strong></td><td colspan="5"></td><td><strong>${fmt(state.data.ar.total)}</strong></td></tr>
+                </table>
+            </div>`;
+        }
+
+        // ── AP ────────────────────────────────────────────────────────
+        if (selected.includes('ap') && state.data.ap?.vendors?.length) {
+            doc += `
+            <div class="print-section">
+                <div class="print-section-header">
+                    <h2>Accounts Payable</h2>
+                    <img class="section-logo" src="${LAZLAB_LOGO}" alt="LAZLAB">
+                </div>
+                <table>
+                    <tr><th>Vendor</th><th>Current</th><th>1–30</th><th>31–60</th><th>61–90</th><th>&gt;90</th><th>Total</th></tr>
+                    ${state.data.ap.vendors.map(v=>`<tr><td>${v.vendor}</td><td>${fmt(v.current)}</td><td>${fmt(v.d1to30)}</td><td>${fmt(v.d31to60)}</td><td>${fmt(v.d61to90)}</td><td>${fmt(v.d90plus)}</td><td>${fmt(v.total)}</td></tr>`).join('')}
+                    <tr><td><strong>TOTAL</strong></td><td colspan="5"></td><td><strong>${fmt(state.data.ap.total)}</strong></td></tr>
+                </table>
+            </div>`;
+        }
+
+        // ── P&L ───────────────────────────────────────────────────────
+        if (selected.includes('pl') && state.data.pl?.accounts?.length) {
+            doc += `
+            <div class="print-section">
+                <div class="print-section-header">
+                    <h2>Profit &amp; Loss</h2>
+                    <img class="section-logo" src="${LAZLAB_LOGO}" alt="LAZLAB">
+                </div>
+                <table>
+                    <tr><th>Account</th><th style="text-align:right">Amount</th></tr>
+                    ${state.data.pl.accounts.map(a=>{
+                        const b = a.line.toUpperCase().includes('TOTAL')||a.line.toUpperCase().includes('NET') ? 'font-weight:bold;' : '';
+                        return `<tr><td style="padding-left:${a.depth*16}px;${b}">${a.line}</td><td style="text-align:right;${b}">${fmt(a.amount)}</td></tr>`;
+                    }).join('')}
+                </table>
+            </div>`;
+        }
+
+        // ── Balance Sheet ─────────────────────────────────────────────
+        if (selected.includes('bs') && state.data.bs?.accounts?.length) {
+            doc += `
+            <div class="print-section">
+                <div class="print-section-header">
+                    <h2>Balance Sheet</h2>
+                    <img class="section-logo" src="${LAZLAB_LOGO}" alt="LAZLAB">
+                </div>
+                <table>
+                    <tr><th>Account</th><th style="text-align:right">Amount</th></tr>
+                    ${state.data.bs.accounts.map(a=>{
+                        const b = a.line.toUpperCase().includes('TOTAL') ? 'font-weight:bold;' : '';
+                        return `<tr><td style="padding-left:${a.depth*16}px;${b}">${a.line}</td><td style="text-align:right;${b}">${fmt(a.amount)}</td></tr>`;
+                    }).join('')}
+                </table>
+            </div>`;
+        }
+
+        // ── Trial Balance ─────────────────────────────────────────────
+        if (selected.includes('tb') && state.data.tb?.accounts?.length) {
+            doc += `
+            <div class="print-section">
+                <div class="print-section-header">
+                    <h2>Trial Balance</h2>
+                    <img class="section-logo" src="${LAZLAB_LOGO}" alt="LAZLAB">
+                </div>
+                <table>
+                    <tr><th>Account</th><th>Debit</th><th>Credit</th><th>Adj Debit</th><th>Adj Credit</th><th>Balance</th></tr>
+                    ${state.data.tb.accounts.map(a=>`<tr><td>${a.account}</td><td style="text-align:right">${fmt(a.debit)}</td><td style="text-align:right">${fmt(a.credit)}</td><td style="text-align:right">${fmt(a.adjDebit)}</td><td style="text-align:right">${fmt(a.adjCredit)}</td><td style="text-align:right"><strong>${fmt(a.adjBalance)}</strong></td></tr>`).join('')}
+                </table>
+            </div>`;
+        }
+
+        // Inject into hidden print document and trigger print
+        const printDoc = document.getElementById('print-document');
+        printDoc.innerHTML = doc;
+        printDoc.style.display = 'block';
+        closePrintModal();
+
+        setTimeout(() => {
+            window.print();
+            setTimeout(() => {
+                printDoc.style.display = 'none';
+                printDoc.innerHTML = '';
+            }, 1000);
+        }, 300);
+    }
+    function showLicenseModal() {
+        document.getElementById('license-modal').style.display = 'none';
+    }
+
+    if (typeof window.bakedState !== 'undefined') {
+        Object.assign(state, window.bakedState);
+        populateAllData();
+        enableTabs();
+        updateLibrary();
+        switchTab('dashboard');
+
+        if (window.isBaked) {
+            // Set logo in modal
+            document.getElementById('lazlab-logo').src = LAZLAB_LOGO;
+
+            // Hide Load Data nav item
+            document.querySelector('[data-tab="upload"]').style.display = 'none';
+
+            // Hide Bake button
+            document.getElementById('bake-btn').style.display = 'none';
+
+            // Hide AI analyze button
+            const analyzeBtn = document.getElementById('analyze-btn');
+            if (analyzeBtn) analyzeBtn.style.display = 'none';
+
+            // Replace AI insights placeholder
+            const insightsContainer = document.getElementById('insights-container');
+            if (insightsContainer) {
+                insightsContainer.innerHTML = '<div class="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center text-gray-500 text-sm">AI analysis requires a licensed copy. Contact LAZLAB Creations.</div>';
+            }
+
+            // Intercept settings button — handled internally by openSettings()
+            document.querySelector('button[onclick="openSettings()"]').setAttribute('onclick', 'openSettings()');
+
+            // Add viewer banner at top of main
+            const main = document.querySelector('main');
+            const banner = document.createElement('div');
+            banner.className = 'text-white text-xs text-center py-2 px-4 print-hide flex items-center justify-center gap-2';
+            banner.style.background = '#1a0a2e';
+            banner.innerHTML = `<img src="${LAZLAB_LOGO}" class="w-5 h-5 rounded-full"> <strong>LAZLAB Financial Review</strong> &nbsp;|&nbsp; View-only export &nbsp;|&nbsp; © 2026 LAZLAB Creations`;
+            main.prepend(banner);
+        }
+    }
+
+    // Settings Modal
+    function openSettings() {
+        if (window.isBaked) { showLicenseModal(); return; }
+        document.getElementById('settings-modal').classList.remove('hidden');
+        const savedKey = localStorage.getItem('groq_api_key');
+        if (savedKey) document.getElementById('groq-key-input').value = savedKey;
+    }
+
+    function closeSettings() {
+        document.getElementById('settings-modal').classList.add('hidden');
+    }
+
+    function saveGroqKey() {
+        if (window.isBaked) { showLicenseModal(); return; }
+        const key = document.getElementById('groq-key-input').value.trim();
+        if (!key) {
+            alert('Please enter a Groq API key');
+            return;
+        }
+        localStorage.setItem('groq_api_key', key);
+        state.groqKey = key;
+        document.getElementById('analyze-btn').disabled = false;
+        alert('API key saved!');
+        closeSettings();
+    }
+
+    function exportData() {
+        const dataStr = JSON.stringify(state, null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `financial-data-${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function clearData() {
+        if (confirm('Are you sure? This will clear all loaded data.')) {
+            state.files = {};
+            state.data = {};
+            location.reload();
+        }
+    }
+
+    // Groq Analysis
+    async function runGroqAnalysis() {
+        if (window.isBaked) { showLicenseModal(); return; }
+        const groqKey = localStorage.getItem('groq_api_key');
+        if (!groqKey) {
+            alert('Please set your Groq API key in Settings');
+            return;
+        }
+
+        const container = document.getElementById('insights-container');
+        container.innerHTML = '<div class="text-center text-gray-500">🤔 Analyzing financials...</div>';
+
+        try {
+            // Prepare financial summary
+            const summary = {
+                assets: state.data.bs?.totalAssets || 0,
+                liabilities: state.data.bs?.totalLiab || 0,
+                equity: state.data.bs?.totalEquity || 0,
+                revenue: state.data.pl?.totalIncome || 0,
+                expenses: state.data.pl?.totalExpense || 0,
+                netIncome: state.data.pl?.netIncome || 0,
+                ar: state.data.ar?.total || 0,
+                ap: state.data.ap?.total || 0,
+                arVendorCount: state.data.ar?.vendors?.length || 0,
+                apVendorCount: state.data.ap?.vendors?.length || 0
             };
 
-            if (filename.includes('AR')) {
-                const totalRow = rows.find(r => r.includes('TOTAL') && !r.includes('Current'));
-                if (totalRow) reportData.ar = getLastNumber(totalRow);
-                
-                rows.forEach(r => {
-                    const name = r;
-                    if (name && name !== 'TOTAL' && name !== 'Current' && r.length > 2) {
-                        const amt = getLastNumber(r);
-                        if (amt !== 0) globalLedgerData.push({ type: 'AR', entity: name, amount: amt });
-                    }
-                });
-            } 
-            else if (filename.includes('AP')) {
-                const totalRow = rows.find(r => r.includes('TOTAL') && !r.includes('Current'));
-                if (totalRow) reportData.ap = getLastNumber(totalRow);
-                
-                rows.forEach(r => {
-                    const name = r;
-                    if (name && name !== 'TOTAL' && name !== 'Current' && r.length > 2) {
-                        const amt = getLastNumber(r);
-                        if (amt !== 0) globalLedgerData.push({ type: 'AP', entity: name, amount: amt });
-                    }
-                });
-            }
-            else if (filename.includes('PL')) {
-                const incRow = rows.find(r => r.some(c => c && c.toString().includes('Total Income')));
-                if (incRow) reportData.income = parseNum(incRow[incRow.length - 3] || getLastNumber(incRow));
+            const prompt = `You are a financial analyst. Review this business financial summary and provide 4-5 key insights in a professional format. Keep each insight concise (1-2 sentences). Format as plain text, one insight per line.
 
-                const expRow = rows.find(r => r.some(c => c && c.toString().includes('Total Expense')));
-                if (expRow) reportData.expense = parseNum(expRow[expRow.length - 3] || getLastNumber(expRow));
+Financial Summary:
+- Total Assets: $${summary.assets.toLocaleString()}
+- Total Liabilities: $${summary.liabilities.toLocaleString()}
+- Total Equity: $${summary.equity.toLocaleString()}
+- Revenue: $${summary.revenue.toLocaleString()}
+- Expenses: $${summary.expenses.toLocaleString()}
+- Net Income: $${summary.netIncome.toLocaleString()}
+- Accounts Receivable: $${summary.ar.toLocaleString()} (${summary.arVendorCount} customers)
+- Accounts Payable: $${summary.ap.toLocaleString()} (${summary.apVendorCount} vendors)
 
-                const netRow = rows.find(r => r.some(c => c && c.toString().includes('Net Ordinary Income')));
-                if (netRow) reportData.netIncome = parseNum(netRow[netRow.length - 3] || getLastNumber(netRow));
-            }
-            else if (filename.includes('BS')) {
-                const assetRow = rows.find(r => r.some(c => c && c.toString().toUpperCase() === 'TOTAL ASSETS'));
-                if (assetRow) reportData.assets = parseNum(assetRow[assetRow.length - 3] || getLastNumber(assetRow));
+Provide insights on: Profitability, Liquidity, Leverage, and Risk Areas. Be concise and professional.`;
 
-                const liabRow = rows.find(r => r.some(c => c && c.toString().includes('Total Liabilities')));
-                if (liabRow) reportData.liabilities = parseNum(liabRow[liabRow.length - 3] || getLastNumber(liabRow));
-
-                const eqRow = rows.find(r => r.some(c => c && c.toString().includes('Total Equity')));
-                if (eqRow) reportData.equity = parseNum(eqRow[eqRow.length - 3] || getLastNumber(eqRow));
-            }
-        }
-
-        function updateUI() {
-            document.getElementById('dash-ar').innerText = formatter.format(reportData.ar);
-            document.getElementById('dash-ap').innerText = formatter.format(reportData.ap);
-            document.getElementById('dash-net').innerText = formatter.format(reportData.netIncome);
-            document.getElementById('dash-equity').innerText = formatter.format(reportData.equity);
-
-            document.getElementById('rep-income').innerText = formatter.format(reportData.income);
-            document.getElementById('rep-expense').innerText = formatter.format(reportData.expense);
-            document.getElementById('rep-net').innerText = formatter.format(reportData.netIncome);
-            document.getElementById('rep-ar').innerText = formatter.format(reportData.ar);
-            document.getElementById('rep-ap').innerText = formatter.format(reportData.ap);
-            document.getElementById('rep-assets').innerText = formatter.format(reportData.assets);
-            document.getElementById('rep-liab').innerText = formatter.format(reportData.liabilities);
-            document.getElementById('rep-equity').innerText = formatter.format(reportData.equity);
-
-            renderLedgerAndChart();
-        }
-
-        function renderLedgerAndChart() {
-            const tbody = document.getElementById('ledger-body');
-            tbody.innerHTML = ''; 
-            
-            if (globalLedgerData.length === 0) return;
-
-            globalLedgerData.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
-
-            // Cleanly formatted table with text truncation
-            globalLedgerData.forEach(item => {
-                const tr = document.createElement('tr');
-                tr.className = "border-b border-gray-100 hover:bg-gray-50 transition-colors";
-                const isAP = item.type === 'AP';
-                const colorClass = isAP ? 'text-red-600' : 'text-green-600';
-                const tagClass = isAP ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700';
-                
-                tr.innerHTML = `
-                    <td class="py-3 font-medium text-gray-700 flex items-center gap-3 w-full">
-                        <span class="text-[10px] px-2 py-1 rounded font-bold uppercase tracking-wide shrink-0 ${tagClass}">${item.type}</span>
-                        <span class="truncate block max-w-[200px] sm:max-w-xs" title="${item.entity}">${item.entity}</span>
-                    </td>
-                    <td class="py-3 text-right font-semibold whitespace-nowrap ${colorClass}">${formatter.format(item.amount)}</td>
-                `;
-                tbody.appendChild(tr);
-            });
-
-            // Reduced to top 5 items for a cleaner chart
-            const topItems = globalLedgerData.slice(0, 5);
-            // Further truncate labels for the chart specifically
-            const labels = topItems.map(i => i.entity.length > 18 ? i.entity.substring(0, 15) + '...' : i.entity);
-            const data = topItems.map(i => Math.abs(i.amount));
-            const bgColors = topItems.map(i => i.type === 'AP' ? 'rgba(239, 68, 68, 0.85)' : 'rgba(34, 197, 94, 0.85)');
-
-            if (chartInstance) chartInstance.destroy(); 
-            const ctx = document.getElementById('ledgerChart').getContext('2d');
-            
-            chartInstance = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: data,
-                        backgroundColor: bgColors,
-                        borderWidth: 1,
-                        borderColor: '#ffffff'
-                    }]
+            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${groqKey}`,
+                    'Content-Type': 'application/json'
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    layout: {
-                        padding: { left: 10, right: 10, top: 10, bottom: 10 }
-                    },
-                    plugins: {
-                        // Moved legend to the right so it doesn't squish vertically
-                        legend: { 
-                            position: 'right', 
-                            labels: { 
-                                boxWidth: 12,
-                                padding: 15,
-                                font: { size: 11 }
-                            } 
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return ' ' + formatter.format(context.raw);
-                                }
-                            }
+                body: JSON.stringify({
+                    model: 'llama-3.3-70b-versatile',
+                    messages: [
+                        {
+                            role: 'user',
+                            content: prompt
                         }
-                    }
-                }
+                    ],
+                    max_tokens: 1000,
+                    temperature: 0.5
+                })
             });
-        }
 
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js').catch(() => {});
-            });
+            const responseData = await response.json();
+
+            if (!response.ok) {
+                const errorMsg = responseData.error?.message || `HTTP ${response.status}`;
+                throw new Error(errorMsg);
+            }
+
+            const analysisText = responseData.choices?.[0]?.message?.content || 'No analysis available';
+            
+            // Parse insights into cards
+            renderInsightCards(analysisText);
+
+        } catch (err) {
+            container.innerHTML = `<div class="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm"><strong>Analysis failed:</strong> ${err.message}<br><br><small>Make sure your Groq API key is valid. Get one free at <a href="https://console.groq.com" target="_blank" class="underline">console.groq.com</a></small></div>`;
+            console.error('Groq error:', err);
         }
-    </script>
+    }
+
+    function renderInsightCards(analysisText) {
+        const container = document.getElementById('insights-container');
+        const lines = analysisText.split('\n').filter(line => line.trim().length > 0);
+        
+        let html = '';
+        const colors = [
+            { bg: '#1f2937', text: '#ffffff', accent: '#3b82f6' },
+            { bg: '#f3f4f6', text: '#1f2937', accent: '#059669' },
+            { bg: '#1f2937', text: '#ffffff', accent: '#f59e0b' },
+            { bg: '#f3f4f6', text: '#1f2937', accent: '#dc2626' },
+            { bg: '#1f2937', text: '#ffffff', accent: '#8b5cf6' }
+        ];
+
+        lines.forEach((line, idx) => {
+            const color = colors[idx % colors.length];
+            html += `<div style="background:${color.bg};color:${color.text};border-left:4px solid ${color.accent};padding:1.5rem;border-radius:8px;margin-bottom:1rem;">
+                <p style="margin:0;line-height:1.6;font-size:14px;">${line.trim()}</p>
+            </div>`;
+        });
+
+        container.innerHTML = html;
+    }
+
+    // Load Groq key from localStorage on init
+    const savedKey = localStorage.getItem('groq_api_key');
+    if (savedKey) {
+        state.groqKey = savedKey;
+        document.getElementById('analyze-btn').disabled = false;
+    }
+</script>
+
 </body>
 </html>
