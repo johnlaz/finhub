@@ -1079,9 +1079,9 @@ Only include keys you are confident about. Data sample:\n${sample}`
         const { rows } = state.files.ar;
         state.data.ar = { vendors: [], total: 0 };
 
-        // Odoo AR: Row 3 has headers (Invoice Date, At Date, 1-30, 31-60, 61-90, 91-120, Older, Total)
-        // Rows 4+ have vendor data
-        const headerRow = rows[3] || [];
+        // Odoo AR: Row 2 (0-indexed) has headers (Invoice Date, At Date, 1-30, 31-60, 61-90, 91-120, Older, Total)
+        // Row 3 (0-indexed) has summary line, Rows 4+ have individual vendors
+        const headerRow = rows[2] || [];
         const atDateCol = headerRow.indexOf('At Date');
         const c1to30 = headerRow.indexOf('1-30');
         const c31to60 = headerRow.indexOf('31-60');
@@ -1090,12 +1090,12 @@ Only include keys you are confident about. Data sample:\n${sample}`
         const cOlder = headerRow.indexOf('Older');
         const cTotal = headerRow.indexOf('Total');
 
-        for (let i = 4; i < rows.length; i++) {
+        for (let i = 3; i < rows.length; i++) {
             const row = rows[i];
-            if (!row[0] || row[0].toString().toUpperCase() === 'AGED RECEIVABLE') continue;
+            if (!row[0]) continue;
 
             const vendor = row[0].toString().trim();
-            if (!vendor || vendor.toUpperCase() === 'TOTAL') continue;
+            if (!vendor || vendor.toUpperCase() === 'AGED RECEIVABLE' || vendor.toUpperCase().includes('TOTAL')) continue;
 
             const total = parseNum(row[cTotal]);
             if (total === 0) continue;
@@ -1121,8 +1121,8 @@ Only include keys you are confident about. Data sample:\n${sample}`
         const { rows } = state.files.ap;
         state.data.ap = { vendors: [], total: 0 };
 
-        // Odoo AP: Same structure as AR
-        const headerRow = rows[3] || [];
+        // Odoo AP: Same structure as AR - row 2 has headers
+        const headerRow = rows[2] || [];
         const atDateCol = headerRow.indexOf('At Date');
         const c1to30 = headerRow.indexOf('1-30');
         const c31to60 = headerRow.indexOf('31-60');
@@ -1131,12 +1131,12 @@ Only include keys you are confident about. Data sample:\n${sample}`
         const cOlder = headerRow.indexOf('Older');
         const cTotal = headerRow.indexOf('Total');
 
-        for (let i = 4; i < rows.length; i++) {
+        for (let i = 3; i < rows.length; i++) {
             const row = rows[i];
-            if (!row[0] || row[0].toString().toUpperCase() === 'AGED PAYABLE') continue;
+            if (!row[0]) continue;
 
             const vendor = row[0].toString().trim();
-            if (!vendor || vendor.toUpperCase() === 'TOTAL') continue;
+            if (!vendor || vendor.toUpperCase() === 'AGED PAYABLE' || vendor.toUpperCase().includes('TOTAL')) continue;
 
             const total = parseNum(row[cTotal]);
             if (total === 0) continue;
@@ -1162,10 +1162,10 @@ Only include keys you are confident about. Data sample:\n${sample}`
         const { rows } = state.files.bs;
         state.data.bs = { accounts: [], totalAssets: 0, totalLiab: 0, totalEquity: 0 };
 
-        // Odoo BS: Row 3 has headers (Account, Balance), rows 5+ have data
+        // Odoo BS: Row 2 (0-indexed) has headers, data starts at row 3
         const balanceCol = 1; // Column B (index 1)
 
-        for (let i = 5; i < rows.length; i++) {
+        for (let i = 3; i < rows.length; i++) {
             const row = rows[i];
             if (!row[0]) continue;
 
@@ -1192,10 +1192,10 @@ Only include keys you are confident about. Data sample:\n${sample}`
         const { rows } = state.files.pl;
         state.data.pl = { accounts: [], totalIncome: 0, totalExpense: 0, netIncome: 0 };
 
-        // Odoo PL: Row 3 has headers (Account, Balance), rows 4+ have data
+        // Odoo PL: Row 2 (0-indexed) has headers, data starts at row 3
         const balanceCol = 1;
 
-        for (let i = 4; i < rows.length; i++) {
+        for (let i = 3; i < rows.length; i++) {
             const row = rows[i];
             if (!row[0]) continue;
 
@@ -1221,15 +1221,15 @@ Only include keys you are confident about. Data sample:\n${sample}`
         const { rows } = state.files.tb;
         state.data.tb = { accounts: [], colMap: {} };
 
-        // Odoo TB: Row 3 has headers (Account, Balance, Debit, Credit, Balance, Annotations)
-        const headerRow = rows[3] || [];
+        // Odoo TB: Row 2 (0-indexed) has headers, data starts at row 3
+        const headerRow = rows[2] || [];
         const nameCol = 0;
         const debitCol = headerRow.indexOf('Debit') >= 0 ? headerRow.indexOf('Debit') : 2;
         const creditCol = headerRow.indexOf('Credit') >= 0 ? headerRow.indexOf('Credit') : 3;
-        const balanceCol = headerRow.lastIndexOf('Balance');
+        let balanceCol = headerRow.lastIndexOf('Balance');
         if (balanceCol < 0) balanceCol = 4;
 
-        for (let i = 4; i < rows.length; i++) {
+        for (let i = 3; i < rows.length; i++) {
             const row = rows[i];
             if (!row[nameCol]) continue;
 
