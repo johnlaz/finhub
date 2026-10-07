@@ -38,6 +38,7 @@ Files are parsed in your browser. Nothing is sent to a FinHub server. Only your 
 GitHub Pages from the repo root. When shipping a change, bump `APP_VERSION` in `/app/index.html` **and** `VERSION` in `/app/sw.js` so installed copies update. Installed users see a "FinHub updated" prompt.
 
 ## Changelog
+- **1.2.0** — Mobile layout: the sidebar becomes a slide-in drawer with a menu bar on phones (app and baked view-only export), larger tap targets, tighter padding.
 - **1.1.0** — Renamed FinHub, new icon, landing page, installable PWA with offline support, version stamp, model list refreshes on key save, copyright footer.
 - **1.0** — Initial financial review package.
 
