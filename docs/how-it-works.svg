@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 220" width="900" height="220" role="img" aria-labelledby="t d">
+<title id="t">FinHub flow</title><desc id="d">ZIP of exports flows into FinHub, which produces a dashboard, a printable report and a shareable view-only file.</desc>
+<style>
+.b{fill:#f3f4f6;stroke:#9ca3af;stroke-width:1.5}.h{fill:#111827;stroke:#7ee81a;stroke-width:2}
+.t{font:600 15px -apple-system,Segoe UI,sans-serif;fill:#111827}.th{font:700 17px -apple-system,Segoe UI,sans-serif;fill:#7ee81a}
+.s{font:13px -apple-system,Segoe UI,sans-serif;fill:#4b5563}.sh{font:13px -apple-system,Segoe UI,sans-serif;fill:#d1d5db}
+.a{stroke:#6b7280;stroke-width:2;fill:none;marker-end:url(#m)}
+@media (prefers-color-scheme:dark){.b{fill:#1f2937;stroke:#6b7280}.t{fill:#f3f4f6}.s{fill:#9ca3af}.a{stroke:#9ca3af}}
+</style>
+<defs><marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#6b7280"/></marker></defs>
+<rect class="b" x="10" y="70" width="190" height="80" rx="10"/><text class="t" x="105" y="105" text-anchor="middle">ZIP of exports</text><text class="s" x="105" y="127" text-anchor="middle">QuickBooks / Odoo</text>
+<path class="a" d="M200 110H290"/>
+<rect class="h" x="292" y="50" width="230" height="120" rx="12"/><text class="th" x="407" y="92" text-anchor="middle">FinHub</text><text class="sh" x="407" y="118" text-anchor="middle">detect columns · organize</text><text class="sh" x="407" y="140" text-anchor="middle">runs in your browser</text>
+<path class="a" d="M522 85C560 60 590 40 620 40"/><path class="a" d="M522 110H620"/><path class="a" d="M522 135C560 160 590 180 620 180"/>
+<rect class="b" x="622" y="14" width="268" height="52" rx="10"/><text class="t" x="756" y="45" text-anchor="middle">Dashboard + AI insights</text>
+<rect class="b" x="622" y="84" width="268" height="52" rx="10"/><text class="t" x="756" y="115" text-anchor="middle">Print / PDF report</text>
+<rect class="b" x="622" y="154" width="268" height="52" rx="10"/><text class="t" x="756" y="185" text-anchor="middle">Baked view-only HTML</text>
+</svg>
