@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/banner.svg" alt="FinHub: Ingest, Organize, Analyze" width="100%"></p>
+
 # FinHub
 
 ![How FinHub works](docs/how-it-works.svg)
