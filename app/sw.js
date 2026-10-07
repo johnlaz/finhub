@@ -1,5 +1,5 @@
 // FinHub service worker. Keep CACHE in sync with APP_VERSION in index.html.
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 const CACHE = 'finhub-v' + VERSION;
 const LOCAL = ['./', 'index.html', 'manifest.json', 'icon-192.png', 'icon-512.png'];
 const CDN = [

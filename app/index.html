@@ -26,6 +26,27 @@
             --success: #16a34a;    /* bake / positive    (green-600) */
             --brand: #7ee81a;      /* logo lime, accents */
         }
+        /* Mobile: sidebar becomes a slide-in drawer under 768px */
+        #m-bar,#m-backdrop{display:none}
+        @media (max-width:767px){
+        #m-bar{display:flex;position:fixed;top:0;left:0;right:0;height:52px;z-index:40;align-items:center;gap:10px;padding:0 10px;background:#111827;color:#fff;border-bottom:1px solid #374151}
+        #m-bar button{width:44px;height:44px;border:0;border-radius:8px;background:transparent;color:#fff;font-size:24px;line-height:1;cursor:pointer}
+        #m-bar button:active{background:#1f2937}
+        #m-bar img{width:28px;height:28px;border-radius:6px}
+        aside.m-side{position:fixed!important;top:0;bottom:0;left:0;z-index:50;width:288px!important;max-width:85vw;transform:translateX(-100%);transition:transform .22s ease}
+        body.nav-open aside.m-side{transform:none;box-shadow:0 0 40px rgba(0,0,0,.5)}
+        #m-backdrop{display:block;position:fixed;inset:0;z-index:45;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .22s}
+        body.nav-open #m-backdrop{opacity:1;pointer-events:auto}
+        body.nav-open{overflow:hidden}
+        .h-screen{height:100vh!important;height:100dvh!important}
+        main{padding-top:64px!important}
+        main.p-8{padding-left:14px!important;padding-right:14px!important;padding-bottom:24px!important}
+        main h2.text-3xl{font-size:1.5rem!important;line-height:2rem!important}
+        .nav-btn{padding-top:.75rem!important;padding-bottom:.75rem!important}
+        #drop-zone{padding:2rem 1rem!important}
+main .p-8{padding:1.25rem!important}
+        .metric-value{font-size:17px}
+        }
         /* ── Screen styles ─────────────────────────────── */
         .tab-content { display: none; }
         .tab-content.active { display: block; }
@@ -131,8 +152,10 @@
 </head>
 <body class="bg-gray-50">
 
+<div id="m-bar" class="print-hide"><button id="m-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar" onclick="toggleSidebar()">&#9776;</button><img src="icon-192.png" alt=""><strong>FinHub</strong></div>
+<div id="m-backdrop" class="print-hide" onclick="toggleSidebar(false)"></div>
 <div class="flex h-screen overflow-hidden">
-    <aside class="w-72 bg-gray-900 text-white flex flex-col overflow-y-auto print-hide">
+    <aside id="sidebar" class="m-side w-72 bg-gray-900 text-white flex flex-col overflow-y-auto print-hide">
         <div class="p-6 border-b border-gray-700 sticky top-0 bg-gray-900">
             <div class="flex items-center gap-3">
                 <img src="icon-192.png" alt="" width="40" height="40" class="w-10 h-10 rounded-lg">
@@ -544,7 +567,7 @@
                 <h3 class="font-bold text-lg mb-2">About</h3>
                 <div class="text-sm text-gray-600 space-y-2">
                     <p><strong>FinHub — Financial Review Package</strong></p>
-                    <p><span id="about-version">v1.1.0</span> — Interactive financial analysis and reporting</p>
+                    <p><span id="about-version">v1.2.0</span> — Interactive financial analysis and reporting</p>
                     <p class="pt-2">Built by <strong>LAZLAB Creations</strong></p>
                     <p class="text-xs text-gray-500 mt-4">© 2026 LAZLAB Creations. All Rights Reserved. · <a href="mailto:lazlab.io@gmail.com" class="underline">lazlab.io@gmail.com</a></p>
                 </div>
@@ -568,7 +591,7 @@
 
 <script>
     // Keep APP_VERSION in sync with CACHE in sw.js (finhub-v<APP_VERSION>)
-    const APP_VERSION = '1.1.0';
+    const APP_VERSION = '1.2.0';
     document.getElementById('version-stamp').textContent = 'v' + APP_VERSION;
     document.getElementById('about-version').textContent = 'v' + APP_VERSION;
     if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
@@ -602,7 +625,12 @@
         document.getElementById(`tab-${tabName}`).classList.add('active');
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('bg-gray-800'));
         document.querySelector(`[data-tab="${tabName}"]`)?.classList.add('bg-gray-800');
+        toggleSidebar(false);
     }
+
+    function toggleSidebar(o){o=(typeof o==='boolean')?o:!document.body.classList.contains('nav-open');document.body.classList.toggle('nav-open',o);var b=document.getElementById('m-toggle');if(b){b.setAttribute('aria-expanded',o);b.setAttribute('aria-label',o?'Close menu':'Open menu');}}
+    document.addEventListener('keydown',function(e){if(e.key==='Escape')toggleSidebar(false);});
+    window.addEventListener('resize',function(){if(window.innerWidth>=768)toggleSidebar(false);});
 
     document.getElementById('drop-zone').addEventListener('click', () => {
         if (window.isBaked) { showLicenseModal(); return; }
@@ -1372,11 +1400,34 @@ td{border:1px solid #e5e7eb;padding:8px}tr:hover{background:#f9fafb}
 .metric:hover{box-shadow:0 2px 8px rgba(0,0,0,0.1);border-color:#93c5fd}
 .metric-label{font-size:12px;color:#6b7280}.metric-value{font-size:20px;font-weight:bold;color:#111827;margin-top:4px}
 .positive{color:#059669}.negative{color:#dc2626}
+/* Mobile: sidebar becomes a slide-in drawer under 768px */
+#m-bar,#m-backdrop{display:none}
+@media (max-width:767px){
+#m-bar.no-print{display:flex;position:fixed;top:0;left:0;right:0;height:52px;z-index:40;align-items:center;gap:10px;padding:0 10px;background:#111827;color:#fff;border-bottom:1px solid #374151}
+#m-bar button{width:44px;height:44px;border:0;border-radius:8px;background:transparent;color:#fff;font-size:24px;line-height:1;cursor:pointer}
+#m-bar button:active{background:#1f2937}
+#m-bar img{width:28px;height:28px;border-radius:6px}
+aside.m-side{position:fixed!important;top:0;bottom:0;left:0;z-index:50;width:288px!important;max-width:85vw;transform:translateX(-100%);transition:transform .22s ease}
+body.nav-open aside.m-side{transform:none;box-shadow:0 0 40px rgba(0,0,0,.5)}
+#m-backdrop{display:block;position:fixed;inset:0;z-index:45;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .22s}
+body.nav-open #m-backdrop{opacity:1;pointer-events:auto}
+body.nav-open{overflow:hidden}
+.h-screen{height:100vh!important;height:100dvh!important}
+main{padding-top:64px!important}
+main.p-8{padding-left:14px!important;padding-right:14px!important;padding-bottom:24px!important}
+main h2.text-3xl{font-size:1.5rem!important;line-height:2rem!important}
+.nav-btn{padding-top:.75rem!important;padding-bottom:.75rem!important}
+#drop-zone{padding:2rem 1rem!important}
+main .p-8{padding:1.25rem!important}
+.metric-value{font-size:17px}
+}
 </style>
 </head>
 <body class="bg-gray-50">
+<div id="m-bar" class="no-print"><button id="m-toggle" type="button" aria-label="Open menu" aria-expanded="false" onclick="toggleSidebar()">&#9776;</button><img src="${LAZLAB_LOGO}" alt=""><strong>Financial Review</strong></div>
+<div id="m-backdrop" class="no-print" onclick="toggleSidebar(false)"></div>
 <div class="flex h-screen overflow-hidden">
-<aside class="w-72 bg-gray-900 text-white flex flex-col overflow-y-auto">
+<aside class="m-side w-72 bg-gray-900 text-white flex flex-col overflow-y-auto">
   <div class="p-6 border-b border-gray-700">
     <div class="flex items-center gap-3 mb-1">
       <img src="${LAZLAB_LOGO}" class="w-8 h-8 rounded-full">
@@ -1441,7 +1492,10 @@ td{border:1px solid #e5e7eb;padding:8px}tr:hover{background:#f9fafb}
 <script>
 const state=${JSON.stringify(safeState)};
 ${fmt_fn}
-function switchTab(t){document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));document.getElementById('tab-'+t).classList.add('active');document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('bg-gray-800'));document.querySelector('[data-tab="'+t+'"]')?.classList.add('bg-gray-800');}
+function switchTab(t){document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));document.getElementById('tab-'+t).classList.add('active');document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('bg-gray-800'));document.querySelector('[data-tab="'+t+'"]')?.classList.add('bg-gray-800');toggleSidebar(false);}
+function toggleSidebar(o){o=(typeof o==='boolean')?o:!document.body.classList.contains('nav-open');document.body.classList.toggle('nav-open',o);var b=document.getElementById('m-toggle');if(b){b.setAttribute('aria-expanded',o);b.setAttribute('aria-label',o?'Close menu':'Open menu');}}
+document.addEventListener('keydown',function(e){if(e.key==='Escape')toggleSidebar(false);});
+window.addEventListener('resize',function(){if(window.innerWidth>=768)toggleSidebar(false);});
 function renderAll(){
   const d=state.data;
   if(d.ar){
