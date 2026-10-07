@@ -1,4 +1,7 @@
-# FinHub 1.2.0: changed files
+# FinHub 1.2.1: changed files
+
+**1.2.1:** `app/index.html` (Settings button in sidebar nav), `app/sw.js` (cache finhub-v1.2.1), `README.md`. 1.2.0 notes follow.
+
 
 **1.2.0 (mobile):** `app/index.html` (drawer sidebar + top bar under 768px, also in the baked view-only export; desktop unchanged), `app/sw.js` (cache bump to finhub-v1.2.0), `README.md` (changelog). Everything below is from 1.1.0.
 
