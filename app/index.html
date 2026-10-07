@@ -178,6 +178,7 @@ main .p-8{padding:1.25rem!important}
                     <button onclick="switchTab('pl')" class="nav-btn w-full text-left px-3 py-2 rounded hover:bg-gray-800 text-sm" data-tab="pl">📈 P&L</button>
                     <button onclick="switchTab('bs')" class="nav-btn w-full text-left px-3 py-2 rounded hover:bg-gray-800 text-sm" data-tab="bs">⚖️ Balance Sheet</button>
                     <button onclick="switchTab('tb')" class="nav-btn w-full text-left px-3 py-2 rounded hover:bg-gray-800 text-sm" data-tab="tb">📊 Trial Balance</button>
+                    <button onclick="toggleSidebar(false); openSettings()" class="nav-btn w-full text-left px-3 py-2 rounded hover:bg-gray-800 text-sm mt-2 border-t border-gray-700 pt-3" id="nav-settings">⚙️ Settings</button>
                 </nav>
             </div>
 
@@ -567,7 +568,7 @@ main .p-8{padding:1.25rem!important}
                 <h3 class="font-bold text-lg mb-2">About</h3>
                 <div class="text-sm text-gray-600 space-y-2">
                     <p><strong>FinHub — Financial Review Package</strong></p>
-                    <p><span id="about-version">v1.2.0</span> — Interactive financial analysis and reporting</p>
+                    <p><span id="about-version">v1.2.1</span> — Interactive financial analysis and reporting</p>
                     <p class="pt-2">Built by <strong>LAZLAB Creations</strong></p>
                     <p class="text-xs text-gray-500 mt-4">© 2026 LAZLAB Creations. All Rights Reserved. · <a href="mailto:lazlab.io@gmail.com" class="underline">lazlab.io@gmail.com</a></p>
                 </div>
@@ -591,7 +592,7 @@ main .p-8{padding:1.25rem!important}
 
 <script>
     // Keep APP_VERSION in sync with CACHE in sw.js (finhub-v<APP_VERSION>)
-    const APP_VERSION = '1.2.0';
+    const APP_VERSION = '1.2.1';
     document.getElementById('version-stamp').textContent = 'v' + APP_VERSION;
     document.getElementById('about-version').textContent = 'v' + APP_VERSION;
     if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
